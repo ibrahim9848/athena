@@ -125,7 +125,7 @@ Go to **Settings → Reminders** in the app, enable the reminders you want and s
 
 ## Changelog
 
-Git was unavailable on the build machine; these are the commit messages that would have been used, one per milestone:
+One commit per milestone (see `git log`); each milestone's files landed in its own commit:
 
 - `M1: foundation — SQLite schema + Drizzle, argon2 auth with DB sessions, health check, CLI create-user, Docker packaging`
 - `M2: supplements — seven-day pill box, day plan with tick-offs and progress, Friday two-meal variant, gym-day doses, facts label, plan editor, history heat-strip`
