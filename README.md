@@ -2,6 +2,8 @@
 
 ## What it is
 
+Athena is a small self-hosted supplements + gym tracker, installable as a PWA. It replaces two static HTML pages (a weekly supplement plan and a Thu–Sat lifting plan) with a server-backed app:
+
 <p align="center">
   <img src="docs/screenshot-supplements.jpg" alt="Weekly supplement plan with the seven-day pill box and today's tick-off" width="420">
   <img src="docs/screenshot-workouts.jpg" alt="Lifting plan with the sticky week strip and set sheet" width="420">
@@ -11,9 +13,6 @@
 </p>
 
 Built end-to-end with [Claude Code](https://claude.com/claude-code) from a written spec (see SPEC.md), including the adversarial review pass whose findings are fixed in the git history.
-
-
-Athena is a small self-hosted supplements + gym tracker, installable as a PWA. It replaces two static HTML pages (a weekly supplement plan and a Thu–Sat lifting plan) with a server-backed app:
 
 - a daily supplement plan with a seven-day pill box, tick-offs, gym-day doses and a Friday two-meal variant, all data-driven and editable;
 - a lifting program with day sheets and exercise cues, plus a workout log (weights and reps per set, rest timer, progress charts);
