@@ -1,0 +1,20 @@
+# Decisions
+
+Things this build chose that the spec didn't settle, or where it deviates (and why).
+
+- **App name "Athena"** instead of "Routine" — owner's request when handing over the spec. Manifest, icon and headings use Athena; the icon letter is "A".
+- **Next.js 14.2 instead of 15** — the build machine runs Node 18.17.1 and Next 15 requires ≥ 18.18. Same architecture (App Router, TypeScript, server actions). The Docker image runs Node 22, so a later upgrade to Next 15 is a version bump.
+- **Hand-written service worker (`public/sw.js`) instead of serwist/next-pwa** — full control over the offline strategy (network-first pages with cache fallback) and Web Push handlers, no extra build plugin pinned to a Next major.
+- **Scheduler runs from `instrumentation.ts`** (Next's server-start hook) rather than a custom `server.js` — works unchanged with `next start` and the standalone Docker output. node-cron in-process as specified.
+- **Schema managed by idempotent DDL (`src/db/ddl.mjs`)** applied at startup, instead of drizzle-kit migration files. Drizzle ORM is still the query layer; for a single-file SQLite app `CREATE TABLE IF NOT EXISTS` is simpler and the CLI scripts reuse the same DDL without a TS toolchain.
+- **`schedule_rules.sort_order` added** (not in spec §5.1) — the reference page shows items within a slot in a deliberate order (e.g. Dinner: Ashwagandha, Creatine, Zinc); without an explicit order the app couldn't reproduce it.
+- **`programs.rest_day_label` / `rest_day_notes` added** — spec §7.2 says rest-day label and notes are "stored on the program" but §5.2's table list omits the columns.
+- **`supplement_settings` table added** — spec §6.1 wants the "Daily amounts from pills" table and disclaimer as a free-text/markdown notes block "on the plan", but no table holds it; one row per user.
+- **Day badge ("Multivitamin day" / "Zinc day") derived, not stored** — the badge shows the first supplement scheduled that day (by sort order) whose default-variant rules don't cover all 7 days. Reproduces the reference exactly and generalises to any alternating pair.
+- **Pill glyph count parsed from the dose string** — "2 capsules" draws two capsules in the day box, like the reference's gym-day magnesium. Leading integer clamped to 1–4, and only when the unit is a countable piece word (tablet/capsule/scoop/…): measured doses like creatine's "5 g" stay a single glyph.
+- **Offline/shared-device hygiene** — the sign-in screen clears the offline outbox and the service worker's page cache, so ops queued under one account can never replay under another, and cached pages of one user are never served to the next person on the same device. The outbox flushes oldest-first in chunks and appends new ops behind anything still queued, so replay order always matches the order of taps.
+- **Ticks/sets go through `POST /api/sync`** (same path online and offline) rather than server actions — the offline outbox replays the identical payload, so there's one code path to test.
+- **Session cookie slides server-side** on every authenticated request; the cookie header itself is re-issued wherever Next allows cookie writes: `POST /api/sync` (every tick and logged set — the daily-driver path) and the editor/settings server actions. Worst case a user who only ever *reads* pages without ticking anything is signed out 90 days after their last mutation.
+- **Daily 03:00 backup runs in-process via node-cron** (same `runBackup()` as `npm run backup`) instead of a compose sidecar — one less container, same `.backup`-semantics result via better-sqlite3's online backup API.
+- **Git was not available on the build machine** — the per-milestone commits requested in spec §13 could not be made; milestone boundaries are documented in the README changelog section instead. Run `git init && git add -A && git commit` once git is installed.
+- **Exercise illustrations: the reference's pose engine is ported** (option 2 of spec §7.4) as `src/lib/pose-engine.js` + a React wrapper. Seeded exercises map by name to the engine's 16 figures; custom exercises fall back to `illustration_svg`, then to no figure.
