@@ -1,0 +1,15 @@
+services:
+  athena:
+    build: .
+    ports:
+      - '3000:3000'
+    env_file: .env
+    environment:
+      # Always the mounted volume inside the container, even if .env points
+      # DATABASE_PATH at ./data/app.db for running `npm run dev` on the host.
+      DATABASE_PATH: /data/app.db
+    volumes:
+      # SQLite database + daily backups (the app's 03:00 node-cron job
+      # writes to /data/backups, i.e. ./data/backups on the host).
+      - ./data:/data
+    restart: unless-stopped

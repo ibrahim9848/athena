@@ -1,0 +1,468 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Weekly Supplement Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: one phone-width column. A seven-compartment pill box sets the week, the chosen day's doses sit under it as a checklist, and a Supplement Facts label holds the reasons and limits. */
+:root{
+  --ground:#E8EBEE;
+  --panel:#FFFFFF;
+  --box:#D2D8DF;
+  --cell:#F6F7F9;
+  --ink:#111315;
+  --muted:#58606A;
+  --hair:#D3D8DE;
+  --on-ink:#FFFFFF;
+  --on-c:#FFFFFF;
+  --multi:#B4385A;
+  --zinc:#B85D12;
+  --omega:#2C5FC4;
+  --ashwa:#38804A;
+  --mag:#7450BF;
+  --crea:#0A7C86;
+  --cap:#FFFFFF;
+  --gloss:#FFFFFF;
+  --score:rgba(255,255,255,.55);
+  --f-display:"Archivo","Arial Narrow","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0C0E11;--panel:#15181C;--box:#24282E;--cell:#1B1E23;
+    --ink:#ECEEF1;--muted:#A0A7B0;--hair:#30353C;--on-ink:#111315;--on-c:#111315;
+    --multi:#E26E8D;--zinc:#F09A4C;--omega:#719BEE;--ashwa:#6CBB7B;--mag:#A88BE9;--crea:#46BFC7;
+    --cap:#E3E5E9;--gloss:#FFFFFF;--score:rgba(255,255,255,.5);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0C0E11;--panel:#15181C;--box:#24282E;--cell:#1B1E23;
+  --ink:#ECEEF1;--muted:#A0A7B0;--hair:#30353C;--on-ink:#111315;--on-c:#111315;
+  --multi:#E26E8D;--zinc:#F09A4C;--omega:#719BEE;--ashwa:#6CBB7B;--mag:#A88BE9;--crea:#46BFC7;
+  --cap:#E3E5E9;--gloss:#FFFFFF;--score:rgba(255,255,255,.5);
+  color-scheme:dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5}
+button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent}
+h1,h2,h3,p{margin:0}
+.wrap{max-width:600px;margin:0 auto;padding-inline:16px;padding-block:28px 44px;display:flex;flex-direction:column;gap:28px}
+
+/* Hero and pill box */
+.hero h1{font-family:var(--f-display);font-stretch:72%;font-weight:900;font-size:clamp(2.5rem,11vw,3.6rem);line-height:.92;letter-spacing:-.005em;text-wrap:balance}
+.lede{margin-top:12px;color:var(--muted);max-width:46ch}
+.box{margin-top:20px;background:var(--box);border-radius:16px;padding:6px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.cell{appearance:none;-webkit-appearance:none;min-width:0;border:2px solid transparent;background:var(--cell);border-radius:11px;padding:0 0 7px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;color:var(--ink)}
+.lid{align-self:stretch;padding:5px 0 4px;border-bottom:1px solid var(--hair);border-radius:9px 9px 0 0;font-family:var(--f-display);font-stretch:80%;font-weight:800;font-size:14px;line-height:1.2;letter-spacing:.03em;text-align:center}
+.cell[aria-pressed="true"]{border-color:var(--ink)}
+.cell[aria-pressed="true"] .lid{background:var(--ink);color:var(--on-ink);border-bottom-color:var(--ink)}
+.well{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:7px;padding-top:2px}
+.row{display:flex;align-items:center;justify-content:center;gap:4px;min-height:14px}
+.row.stack{flex-direction:column}
+.tag{font-family:var(--f-display);font-stretch:75%;font-weight:800;font-size:10px;line-height:1;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.cell[aria-pressed="true"] .tag{color:var(--ink)}
+.legend{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px 16px;font-size:14px;color:var(--muted)}
+.legend>span{display:inline-flex;align-items:center;gap:8px}
+.caption{margin-top:8px;font-size:14px;color:var(--muted)}
+
+/* Pills, drawn in each bottle's colour and real form */
+.pill{display:inline-block;flex:none;vertical-align:middle;transition:opacity .25s}
+.s-multi{--c:var(--multi)}
+.s-zinc{--c:var(--zinc)}
+.s-omega{--c:var(--omega)}
+.s-ashwa{--c:var(--ashwa)}
+.s-mag{--c:var(--mag)}
+.s-crea{--c:var(--crea)}
+.pill.caplet{width:24px;height:10px;border-radius:5px;background:var(--c);position:relative}
+.pill.caplet::after{content:"";position:absolute;left:calc(50% - .5px);top:2px;bottom:2px;width:1px;background:var(--score)}
+.pill.chew{width:14px;height:14px;border-radius:50%;background:var(--c);box-shadow:inset 0 0 0 3px color-mix(in srgb,var(--c) 72%,var(--gloss))}
+.pill.softgel{width:20px;height:12px;border-radius:50%;background:var(--c);background:radial-gradient(ellipse at 32% 30%,color-mix(in srgb,var(--c) 45%,var(--gloss)) 0 16%,var(--c) 62%)}
+.pill.round{width:12px;height:12px;border-radius:50%;background:var(--c)}
+.pill.capsule{width:24px;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--c) 0 50%,var(--cap) 50% 100%);box-shadow:inset 0 0 0 1.5px var(--c)}
+.pill.scoop{width:22px;height:12px;position:relative}
+.pill.scoop::before{content:"";position:absolute;left:0;top:1px;width:13px;height:10px;background:var(--c);border-radius:1px 1px 7px 7px}
+.pill.scoop::after{content:"";position:absolute;left:11px;top:1px;width:11px;height:3px;background:var(--c);border-radius:2px}
+.pill.gone{opacity:.18}
+
+/* Day plan */
+.plan{background:var(--panel);border-radius:18px;padding:20px 18px 10px}
+.plan-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.plan-title-wrap{min-width:0}
+.eyebrow{font-family:var(--f-display);font-stretch:80%;font-weight:800;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.plan h2{margin-top:2px;font-family:var(--f-display);font-stretch:75%;font-weight:850;font-size:30px;line-height:1.05;text-wrap:balance}
+.plan-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.badge{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--hair);border-radius:999px;padding:5px 12px 5px 10px;font-size:14px;font-weight:700;white-space:nowrap}
+.db{display:inline-block;position:relative;width:16px;height:9px;flex:none}
+.db::before{content:"";position:absolute;left:3px;right:3px;top:3.5px;height:2px;background:var(--ink)}
+.db::after{content:"";position:absolute;inset:0;border-left:4px solid var(--ink);border-right:4px solid var(--ink);border-radius:1.5px}
+.back{appearance:none;-webkit-appearance:none;border:1px solid var(--ink);background:transparent;border-radius:999px;padding:5px 14px;font-size:14px;font-weight:700;cursor:pointer}
+.progress{margin-top:16px;display:flex;flex-direction:column;gap:8px}
+.segs{display:flex;gap:4px}
+.seg{flex:1;height:8px;border-radius:4px;background:var(--hair);transition:background-color .25s}
+.seg.on{background:var(--c)}
+.count{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.slots{margin-top:8px}
+.slot{padding:14px 0 4px}
+.slot+.slot{border-top:1px solid var(--hair)}
+.slot-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.slot-name{font-family:var(--f-display);font-stretch:80%;font-weight:800;font-size:13px;letter-spacing:.1em;text-transform:uppercase}
+.slot-sub{font-size:14px;color:var(--muted)}
+.items{display:flex;flex-direction:column;margin-top:2px}
+.item{appearance:none;-webkit-appearance:none;width:100%;display:grid;grid-template-columns:36px minmax(0,1fr) 28px;align-items:center;gap:12px;padding:10px 0;min-height:54px;border:0;background:transparent;text-align:left;cursor:pointer;border-radius:10px}
+.item.static{grid-template-columns:36px minmax(0,1fr);cursor:default}
+.glyph{display:flex;justify-content:center}
+.txt{min-width:0;transition:opacity .2s}
+.nm{font-weight:700;font-size:17px}
+.dose{color:var(--muted)}
+.note{display:block;font-size:14px;color:var(--muted)}
+.check{width:26px;height:26px;border-radius:50%;border:2px solid var(--hair);display:grid;place-items:center;transition:background-color .2s,border-color .2s}
+.check::after{content:"";width:11px;height:6px;border-left:2.5px solid var(--on-ink);border-bottom:2.5px solid var(--on-ink);transform:translateY(-1px) rotate(-45deg);opacity:0}
+@media (hover:hover){.item:not(.static):hover .check{border-color:var(--muted)}}
+.item[aria-pressed="true"] .check{background:var(--ink);border-color:var(--ink);animation:pop .28s ease-out}
+.item[aria-pressed="true"] .check::after{opacity:1}
+.item[aria-pressed="true"] .txt{opacity:.5}
+@keyframes pop{40%{transform:scale(1.18)}}
+
+/* Supplement Facts label */
+.label{background:var(--panel);border:2px solid var(--ink);border-radius:6px;padding:14px 14px 16px}
+.label h2{font-family:var(--f-display);font-stretch:68%;font-weight:900;font-size:clamp(2.2rem,10vw,2.8rem);line-height:1;letter-spacing:-.005em}
+.serving{margin-top:6px;padding-bottom:6px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;border-bottom:1px solid var(--ink);font-size:15px}
+.rule-thick{height:9px;background:var(--ink)}
+.colhead{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid var(--ink);font-family:var(--f-display);font-stretch:85%;font-weight:800;font-size:13px}
+.fact{padding:14px 0;border-bottom:1px solid var(--ink)}
+.fact:last-of-type{border-bottom:0}
+.fact-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.fact-id{min-width:0}
+.fact-name{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-stretch:85%;font-weight:800;font-size:21px;line-height:1.1}
+.fact-amt{flex:none;max-width:48%;text-align:right;font-size:15px;line-height:1.3}
+.fact-amt b{display:block;font-size:16px}
+.wk{display:flex;gap:3px;margin-top:9px}
+.wk i{font-style:normal;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--hair);font-family:var(--f-display);font-stretch:85%;font-weight:800;font-size:10px;line-height:1;color:var(--muted)}
+.wk i.on{background:var(--c);border-color:var(--c);color:var(--on-c)}
+.wk i.x2{box-shadow:inset 0 0 0 2px var(--ink)}
+.contains{margin-top:10px;font-size:14px;font-variant-numeric:tabular-nums}
+.why,.watch{margin-top:6px;font-size:15px;max-width:62ch}
+.amounts-wrap{overflow-x:auto}
+.amounts{width:100%;border-collapse:collapse;font-size:15px;font-variant-numeric:tabular-nums}
+.amounts caption{caption-side:top;text-align:left;padding:6px 0;border-bottom:1px solid var(--ink);font-family:var(--f-display);font-stretch:85%;font-weight:800;font-size:15px}
+.amounts thead th{padding:6px 8px 6px 0;border-bottom:1px solid var(--hair);text-align:left;font-size:13px;font-weight:700;color:var(--muted)}
+.amounts tbody th{text-align:left;font-weight:700;padding:9px 8px 9px 0;vertical-align:top;white-space:nowrap;border-bottom:1px solid var(--hair)}
+.amounts td{padding:9px 8px 9px 0;vertical-align:top;border-bottom:1px solid var(--hair)}
+.amounts td:last-child,.amounts thead th:last-child{text-align:right;padding-right:0;white-space:nowrap}
+.was{display:block;font-size:13px;color:var(--muted)}
+.foot{margin-top:10px;font-size:13px;line-height:1.45;color:var(--muted)}
+.foot+.foot{margin-top:4px}
+.disclaimer{font-size:13px;color:var(--muted)}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="hero">
+    <h1>Weekly Supplement Plan</h1>
+    <p class="lede">Six supplements timed around your meals. Tap a day to see its plan, and tick off today's doses as you take them.</p>
+    <div class="box" id="box" role="group" aria-label="Days of the week"></div>
+    <div class="legend">
+      <span><span class="pill caplet s-multi" aria-hidden="true"></span>Multivitamin</span>
+      <span><span class="pill chew s-zinc" aria-hidden="true"></span>Zinc</span>
+      <span><span class="pill softgel s-omega" aria-hidden="true"></span>Omega-3</span>
+      <span><span class="pill round s-ashwa" aria-hidden="true"></span>Ashwagandha</span>
+      <span><span class="pill scoop s-crea" aria-hidden="true"></span>Creatine</span>
+      <span><span class="pill capsule s-mag" aria-hidden="true"></span>Magnesium</span>
+    </div>
+    <p class="caption">The multivitamin and zinc take turns, so they never land on the same day. Magnesium goes up to 2 capsules on your gym days, Thursday to Saturday. On Fridays you eat two meals, so the day's doses move to your two dinners.</p>
+  </header>
+
+  <section class="plan" aria-labelledby="plan-title">
+    <div class="plan-head">
+      <div class="plan-title-wrap">
+        <p class="eyebrow" id="plan-eyebrow">Today</p>
+        <h2 id="plan-title">Today</h2>
+      </div>
+      <div class="plan-tools">
+        <span class="badge" id="plan-badge"></span>
+        <span class="badge" id="gym-badge" hidden><span class="db" aria-hidden="true"></span>Gym day</span>
+        <button type="button" class="back" id="back" hidden>Back to today</button>
+      </div>
+    </div>
+    <div class="progress" id="progress">
+      <div class="segs" id="segs" aria-hidden="true"></div>
+      <p class="count" id="count" aria-live="polite"></p>
+    </div>
+    <div class="slots" id="slots"></div>
+  </section>
+
+  <section class="label" aria-labelledby="facts-title">
+    <h2 id="facts-title">Supplement Facts</h2>
+    <div class="serving"><span>Serving times <b>4 a day, 3 on Fri</b></span><span>Supplements <b>6</b></span></div>
+    <div class="rule-thick"></div>
+    <div class="colhead"><span>Supplement</span><span>Dose and time</span></div>
+
+    <article class="fact s-multi">
+      <div class="fact-top">
+        <div class="fact-id">
+          <h3 class="fact-name"><span class="pill caplet s-multi" aria-hidden="true"></span>Multivitamin</h3>
+          <span class="wk" role="img" aria-label="Sunday, Tuesday, Thursday and Saturday"><i class="on">S</i><i>M</i><i class="on">T</i><i>W</i><i class="on">T</i><i>F</i><i class="on">S</i></span>
+        </div>
+        <p class="fact-amt"><b>1 tablet</b>First lunch</p>
+      </div>
+      <p class="contains">Zinc 15 mg · Vitamin B6 85 mg · Iron 11 mg</p>
+      <p class="why"><b>Why:</b> Every other day keeps it off the zinc days and brings your B6 down to about 49 mg a day on average. Coffee lowers how much iron you absorb from it, so take it at least an hour away from your coffee.</p>
+      <p class="watch"><b>Watch for:</b> tingling or numbness in your hands or feet. If that happens, stop the multivitamin.</p>
+    </article>
+
+    <article class="fact s-zinc">
+      <div class="fact-top">
+        <div class="fact-id">
+          <h3 class="fact-name"><span class="pill chew s-zinc" aria-hidden="true"></span>Zinc</h3>
+          <span class="wk" role="img" aria-label="Monday, Wednesday and Friday"><i>S</i><i class="on">M</i><i>T</i><i class="on">W</i><i>T</i><i class="on">F</i><i>S</i></span>
+        </div>
+        <p class="fact-amt"><b>1 chewable</b>Dinner<br>First dinner on Fri</p>
+      </div>
+      <p class="contains">Zinc 25 mg · Vitamin C 100 mg</p>
+      <p class="why"><b>Why:</b> It goes on the days you skip the multivitamin, so your pills give 15 or 25 mg of zinc a day instead of 40. Taking it with food makes it easier on your stomach. On Fridays it goes with the first dinner, to keep it hours away from the magnesium.</p>
+    </article>
+
+    <article class="fact s-omega">
+      <div class="fact-top">
+        <div class="fact-id">
+          <h3 class="fact-name"><span class="pill softgel s-omega" aria-hidden="true"></span>Omega-3</h3>
+          <span class="wk" role="img" aria-label="Every day"><i class="on">S</i><i class="on">M</i><i class="on">T</i><i class="on">W</i><i class="on">T</i><i class="on">F</i><i class="on">S</i></span>
+        </div>
+        <p class="fact-amt"><b>1 softgel</b>First lunch<br>First dinner on Fri</p>
+      </div>
+      <p class="contains">EPA 180 mg · DHA 120 mg</p>
+      <p class="why"><b>Why:</b> It absorbs better with a meal that has some fat. Coffee doesn't affect it, so breakfast works too.</p>
+    </article>
+
+    <article class="fact s-ashwa">
+      <div class="fact-top">
+        <div class="fact-id">
+          <h3 class="fact-name"><span class="pill round s-ashwa" aria-hidden="true"></span>Ashwagandha</h3>
+          <span class="wk" role="img" aria-label="Every day"><i class="on">S</i><i class="on">M</i><i class="on">T</i><i class="on">W</i><i class="on">T</i><i class="on">F</i><i class="on">S</i></span>
+        </div>
+        <p class="fact-amt"><b>2 tablets</b>1 at breakfast, 1 at dinner<br>1 at each dinner on Fri</p>
+      </div>
+      <p class="contains">Root extract 300 mg per tablet</p>
+      <p class="why"><b>Why:</b> Its effect builds over weeks, so taking it every day matters more than the time. Splitting the dose matches how it's usually given in studies. If the morning tablet makes you drowsy at work, take both at dinner.</p>
+      <p class="watch"><b>Breaks:</b> use it for up to 3 months, then stop for a few weeks.</p>
+      <p class="watch"><b>Watch for:</b> yellowing eyes or skin, or dark urine. If that happens, stop taking it. The label also says not to combine it with sedatives or anxiety medication.</p>
+    </article>
+
+    <article class="fact s-crea">
+      <div class="fact-top">
+        <div class="fact-id">
+          <h3 class="fact-name"><span class="pill scoop s-crea" aria-hidden="true"></span>Creatine</h3>
+          <span class="wk" role="img" aria-label="Every day"><i class="on">S</i><i class="on">M</i><i class="on">T</i><i class="on">W</i><i class="on">T</i><i class="on">F</i><i class="on">S</i></span>
+        </div>
+        <p class="fact-amt"><b>5 g</b>Dinner<br>Second dinner on Fri</p>
+      </div>
+      <p class="contains">Creatine monohydrate 5 g · check how many grams your scoop holds</p>
+      <p class="why"><b>Why:</b> It works by keeping your muscles topped up, so taking it every day, rest days included, matters more than the time. If you train in the evening, dinner comes right after your workout, which may help a little. You don't need a loading phase, since 5 g a day fills your muscles in about 3 to 4 weeks.</p>
+      <p class="watch"><b>Expect:</b> your weight may go up 1 to 2 kg over the first few weeks. That's water stored in your muscles, not fat.</p>
+      <p class="watch"><b>Blood tests:</b> it can raise your creatinine, a number used to check your kidneys. Tell your doctor you take it before any blood work.</p>
+    </article>
+
+    <article class="fact s-mag">
+      <div class="fact-top">
+        <div class="fact-id">
+          <h3 class="fact-name"><span class="pill capsule s-mag" aria-hidden="true"></span>Magnesium</h3>
+          <span class="wk" role="img" aria-label="Every day, 2 capsules on Thursday, Friday and Saturday"><i class="on">S</i><i class="on">M</i><i class="on">T</i><i class="on">W</i><i class="on x2">T</i><i class="on x2">F</i><i class="on x2">S</i></span>
+        </div>
+        <p class="fact-amt"><b>1 capsule</b>Before bed<br>2 on Thu, Fri, Sat</p>
+      </div>
+      <p class="contains">Magnesium 200 mg per capsule, as buffered bisglycinate</p>
+      <p class="why"><b>Why:</b> One capsule keeps you under the 350 mg daily limit for supplements. Training raises your needs a little, so the second capsule goes on your gym days if your stomach handles it. Bedtime also keeps it hours away from the zinc.</p>
+      <p class="watch"><b>Watch for:</b> loose stools. If they happen, go back to 1 capsule.</p>
+    </article>
+
+    <div class="rule-thick"></div>
+    <div class="amounts-wrap">
+      <table class="amounts">
+        <caption>Daily amounts from pills</caption>
+        <thead><tr><th scope="col">Nutrient</th><th scope="col">Now</th><th scope="col">Limit</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Zinc</th><td>15 or 25 mg<span class="was">was 40 mg every day</span></td><td>40 mg*</td></tr>
+          <tr><th scope="row">Vitamin B6</th><td>49 mg a day on average<span class="was">was 85 mg every day</span></td><td>100 mg*</td></tr>
+          <tr><th scope="row">Magnesium</th><td>200 mg Sun–Wed, 400 mg Thu–Sat</td><td>350 mg**</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="foot">* Upper daily limit for adults in the US. The zinc limit includes food. Europe sets a lower B6 limit of 12 mg.</p>
+    <p class="foot">** For magnesium from supplements only. The multivitamin adds 20 mg on its days. Going over mostly risks loose stools.</p>
+  </section>
+
+  <p class="disclaimer">Built from your bottle labels, except creatine, which uses the standard 5 g dose. This is general information, not medical advice, so check the plan with a pharmacist.</p>
+</div>
+
+<script>
+(function(){
+  var EVERY=[0,1,2,3,4,5,6];
+  var DAY_NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  var DAY_SHORT=['Su','Mo','Tu','We','Th','Fr','Sa'];
+  var S={
+    multi:{name:'Multivitamin',form:'caplet',dose:'1 tablet',days:[0,2,4,6]},
+    zinc:{name:'Zinc',form:'chew',dose:'1 chewable tablet',days:[1,3,5]},
+    omega:{name:'Omega-3',form:'softgel',dose:'1 softgel',days:EVERY},
+    ashwa:{name:'Ashwagandha',form:'round',dose:'1 tablet',days:EVERY},
+    mag:{name:'Magnesium',form:'capsule',dose:'1 capsule',days:EVERY},
+    crea:{name:'Creatine',form:'scoop',dose:'5 g',days:EVERY}
+  };
+  var SLOTS=[
+    {id:'breakfast',name:'Breakfast',sub:'Protein bar, honey and coffee',items:[{s:'ashwa'}]},
+    {id:'lunch',name:'First lunch',items:[{s:'omega'},{s:'multi',note:'At least an hour away from coffee'}]},
+    {id:'dinner',name:'Dinner',items:[{s:'ashwa'},{s:'crea'},{s:'zinc'}]},
+    {id:'bed',name:'Before bed',items:[{s:'mag'}]}
+  ];
+  /* Fridays: two meals, both dinners. Zinc rides with the first one so it stays hours away from the bedtime magnesium. */
+  var TWO_MEAL_DAYS=[5];
+  var TWO_MEAL_SLOTS=[
+    {id:'dinner1',name:'First dinner',sub:'Two meals on Fridays',items:[{s:'ashwa'},{s:'omega'},{s:'zinc',note:'Keeps it hours away from the magnesium'},{s:'multi',note:'At least an hour away from coffee'}]},
+    {id:'dinner2',name:'Second dinner',items:[{s:'ashwa'},{s:'crea'}]},
+    {id:'bed',name:'Before bed',items:[{s:'mag'}]}
+  ];
+  function slotsFor(d){return TWO_MEAL_DAYS.indexOf(d)!==-1?TWO_MEAL_SLOTS:SLOTS;}
+  var BOX_ROWS=[['multi','zinc'],['omega'],['ashwa'],['crea'],['mag']];
+  var PREFIX='supplement-plan:taken:';
+
+  function suppOf(key){return key.split(':')[1];}
+  function onDay(sk,d){return S[sk].days.indexOf(d)!==-1;}
+  function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;}
+  function pill(sk){var p=el('span','pill '+S[sk].form+' s-'+sk);p.setAttribute('aria-hidden','true');return p;}
+  function itemsFor(d){var out=[];slotsFor(d).forEach(function(sl){sl.items.forEach(function(it){if(onDay(it.s,d))out.push({key:sl.id+':'+it.s,s:it.s});});});return out;}
+  function dayType(d){return onDay('multi',d)?'Multivitamin day':'Zinc day';}
+  var GYM=[4,5,6];
+  function isGym(d){return GYM.indexOf(d)!==-1;}
+  function doseFor(sk,d){return sk==='mag'&&isGym(d)?'2 capsules':S[sk].dose;}
+
+  var now=new Date(),today=now.getDay(),todayKey=ymd(now),selected=today,mem={};
+  function load(){
+    try{var raw=localStorage.getItem(PREFIX+todayKey);if(raw){var a=JSON.parse(raw);if(Array.isArray(a))return new Set(a);}}catch(e){}
+    return new Set(mem[todayKey]||[]);
+  }
+  function save(){
+    var a=Array.from(taken);mem[todayKey]=a;
+    try{localStorage.setItem(PREFIX+todayKey,JSON.stringify(a));}catch(e){}
+  }
+  function prune(){
+    try{
+      var cutoff=Date.now()-14*864e5;
+      for(var i=localStorage.length-1;i>=0;i--){
+        var k=localStorage.key(i);
+        if(k&&k.indexOf(PREFIX)===0){var t=new Date(k.slice(PREFIX.length)+'T00:00:00').getTime();if(!isNaN(t)&&t<cutoff)localStorage.removeItem(k);}
+      }
+    }catch(e){}
+  }
+  var taken=load();
+  prune();
+
+  var box=document.getElementById('box'),cells=[];
+  function buildBox(){
+    box.textContent='';cells=[];
+    for(var d=0;d<7;d++){(function(d){
+      var b=el('button','cell');b.type='button';b.id='day-'+d;
+      b.appendChild(el('span','lid',DAY_SHORT[d]));
+      var well=el('span','well'),pills=[];
+      var dayItems=itemsFor(d);
+      BOX_ROWS.forEach(function(row){
+        var keys=dayItems.filter(function(it){return row.indexOf(it.s)!==-1;}).map(function(it){return it.key;});
+        if(!keys.length)return;
+        var r=el('span','row');
+        keys.forEach(function(k){
+          var n=(suppOf(k)==='mag'&&isGym(d))?2:1;
+          if(n>1)r.classList.add('stack');
+          for(var j=0;j<n;j++){var p=pill(suppOf(k));pills.push({el:p,key:k});r.appendChild(p);}
+        });
+        well.appendChild(r);
+      });
+      b.appendChild(well);
+      var tag=el('span','tag','Today');b.appendChild(tag);
+      b.addEventListener('click',function(){selected=d;updateBox();renderPlan();});
+      box.appendChild(b);
+      cells.push({btn:b,pills:pills,tag:tag});
+    })(d);}
+  }
+  function updateBox(){
+    cells.forEach(function(c,d){
+      c.btn.setAttribute('aria-pressed',String(d===selected));
+      c.btn.setAttribute('aria-label',DAY_NAMES[d]+(d===today?' (today)':'')+', '+dayType(d)+(isGym(d)?', gym day':''));
+      c.tag.style.visibility=d===today?'visible':'hidden';
+      c.pills.forEach(function(p){p.el.classList.toggle('gone',d===today&&taken.has(p.key));});
+    });
+  }
+
+  var eyebrow=document.getElementById('plan-eyebrow'),title=document.getElementById('plan-title'),badge=document.getElementById('plan-badge'),
+      back=document.getElementById('back'),progress=document.getElementById('progress'),segsEl=document.getElementById('segs'),
+      count=document.getElementById('count'),slots=document.getElementById('slots'),gymBadge=document.getElementById('gym-badge'),segs=[];
+
+  function renderPlan(){
+    var d=selected,isToday=d===today;
+    eyebrow.textContent=isToday?'Today':'Plan for';
+    title.textContent=isToday?now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}):DAY_NAMES[d];
+    badge.textContent='';
+    badge.appendChild(pill(onDay('multi',d)?'multi':'zinc'));
+    badge.appendChild(document.createTextNode(dayType(d)));
+    back.hidden=isToday;
+    gymBadge.hidden=!isGym(d);
+    progress.hidden=!isToday;
+    slots.textContent='';
+    slotsFor(d).forEach(function(sl){
+      var its=sl.items.filter(function(it){return onDay(it.s,d);});
+      if(!its.length)return;
+      var sec=el('div','slot'),head=el('div','slot-head');
+      head.appendChild(el('h3','slot-name',sl.name));
+      if(sl.sub)head.appendChild(el('span','slot-sub',sl.sub));
+      var list=el('div','items');
+      its.forEach(function(it){
+        var key=sl.id+':'+it.s,row=el(isToday?'button':'div',isToday?'item':'item static');
+        if(isToday){
+          row.type='button';row.id='item-'+sl.id+'-'+it.s;
+          row.setAttribute('aria-pressed',String(taken.has(key)));
+          row.addEventListener('click',function(){toggle(key,row);});
+        }
+        var g=el('span','glyph');g.appendChild(pill(it.s));
+        var tx=el('span','txt');
+        tx.appendChild(el('span','nm',S[it.s].name));
+        tx.appendChild(el('span','dose',' · '+doseFor(it.s,d)));
+        var note=it.note||(it.s==='mag'&&isGym(d)?'Gym day dose':'');
+        if(note)tx.appendChild(el('span','note',note));
+        row.appendChild(g);row.appendChild(tx);
+        if(isToday){var c=el('span','check');c.setAttribute('aria-hidden','true');row.appendChild(c);}
+        list.appendChild(row);
+      });
+      sec.appendChild(head);sec.appendChild(list);slots.appendChild(sec);
+    });
+    segsEl.textContent='';segs=[];
+    itemsFor(today).forEach(function(it){var s=el('span','seg s-'+it.s);segs.push({el:s,key:it.key});segsEl.appendChild(s);});
+    updateProgress();
+  }
+  function updateProgress(){
+    var n=0;
+    segs.forEach(function(s){var on=taken.has(s.key);s.el.classList.toggle('on',on);if(on)n++;});
+    count.textContent=n===segs.length?'All '+n+' taken today':n+' of '+segs.length+' taken';
+  }
+  function toggle(key,row){
+    if(taken.has(key))taken.delete(key);else taken.add(key);
+    save();
+    row.setAttribute('aria-pressed',String(taken.has(key)));
+    updateProgress();updateBox();
+  }
+  back.addEventListener('click',function(){selected=today;updateBox();renderPlan();});
+
+  function refreshDate(){
+    var n=new Date(),k=ymd(n);
+    if(k===todayKey)return;
+    now=n;todayKey=k;today=n.getDay();selected=today;taken=load();updateBox();renderPlan();
+  }
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')refreshDate();});
+  setInterval(refreshDate,60000);
+
+  buildBox();updateBox();renderPlan();
+})();
+</script>
+
+
+</body></html>
