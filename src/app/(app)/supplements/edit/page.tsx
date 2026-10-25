@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { getPlanData, getSupplementNotes } from '@/server/supplements';
 import { DAY_SHORT } from '@/lib/dates';
+import { canAlternate } from '@/lib/plan';
 import { PillGlyph } from '@/components/PillGlyph';
 import type { DayVariant, MealSlot, ScheduleRule, Supplement } from '@/db/schema';
 import {
@@ -164,7 +165,32 @@ function SupplementCard({ supplement: s }: { supplement: Supplement }) {
             </span>
           </label>
         </div>
+        <label className="field">
+          <span>Repeat every (days)</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={30}
+            className="input"
+            name="everyNDays"
+            defaultValue={s.everyNDays ?? 1}
+          />
+        </label>
+        <label className="field">
+          <span>Counting from</span>
+          <input
+            type="date"
+            className="input"
+            name="rotationStart"
+            defaultValue={s.rotationStart ?? ''}
+          />
+        </label>
       </div>
+      <p className="muted" style={{ fontSize: 13 }}>
+        1 = every day its rules allow. 2 = every other day, counted from the start date and
+        carried across weeks (so Saturday to Sunday never repeats).
+      </p>
       <details>
         <summary className="label" style={{ cursor: 'pointer', minHeight: 44, lineHeight: '44px' }}>
           Details
@@ -524,7 +550,7 @@ function RuleCard({
         >
           <input type="hidden" name="ruleAId" value={rule.id} />
           <label className="field" style={{ flex: '1 1 220px' }}>
-            <span>Alternate with…</span>
+            <span>Alternate every other day with…</span>
             <select className="select" name="ruleBId" required>
               {alternates.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -537,7 +563,10 @@ function RuleCard({
             Apply
           </button>
           <p className="muted" style={{ fontSize: 13, flexBasis: '100%' }}>
-            Sets this rule to Sun · Tue · Thu · Sat and the other to Mon · Wed · Fri.
+            They take turns every other day, carried across weeks. The pattern continues from
+            what you took: whichever was due or taken yesterday comes next tomorrow. Their rules
+            are set to every weekday so the rotation alone decides the day. Only supplements with
+            one rule per day type are offered here.
           </p>
         </form>
       ) : null}
@@ -638,10 +667,20 @@ export default async function SupplementsEditPage() {
     const days = r.days.map((d) => DAY_SHORT[d] ?? '?').join(' ');
     return `${name} · ${slotName} · ${days}`;
   };
+  const rulesOf = (supplementId: string) => rules.filter((r) => r.supplementId === supplementId);
+  const isActive = (supplementId: string) => !supplementById.get(supplementId)?.archived;
   const alternatesFor = (rule: ScheduleRule) =>
-    sortedRules
-      .filter((r) => r.id !== rule.id && normalizeVariant(r.variant) === normalizeVariant(rule.variant))
-      .map((r) => ({ id: r.id, label: ruleLabel(r) }));
+    isActive(rule.supplementId)
+      ? sortedRules
+          .filter(
+            (r) =>
+              r.supplementId !== rule.supplementId &&
+              normalizeVariant(r.variant) === normalizeVariant(rule.variant) &&
+              isActive(r.supplementId) &&
+              canAlternate(rulesOf(rule.supplementId), rulesOf(r.supplementId)),
+          )
+          .map((r) => ({ id: r.id, label: ruleLabel(r) }))
+      : [];
 
   const sortedVariants = [...variants].sort((a, b) => a.day - b.day || a.variant.localeCompare(b.variant));
 

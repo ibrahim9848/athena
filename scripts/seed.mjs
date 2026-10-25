@@ -51,7 +51,9 @@ const db = new Database(dbPath);
 try {
   applySchema(db);
 
-  const user = db.prepare('SELECT id, username FROM users WHERE username = ?').get(username);
+  const user = db
+    .prepare('SELECT id, username, timezone FROM users WHERE username = ?')
+    .get(username);
   if (!user) {
     fail(
       `No user named '${username}'. Create one first:\n` +
@@ -122,9 +124,21 @@ try {
     const supplementIds = {};
     const insertSupplement = db.prepare(
       `INSERT INTO supplements
-         (id, user_id, name, form, default_dose, ingredients, why, watch_for, notes, color, sort_order, archived)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 0)`,
+         (id, user_id, name, form, default_dose, ingredients, why, watch_for, notes, color, sort_order, archived,
+          every_n_days, rotation_start)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 0, ?, ?)`,
     );
+    // Rotations count from "today" in the user's own timezone.
+    const today = new Intl.DateTimeFormat('en-CA', {
+      timeZone: user.timezone || 'Asia/Riyadh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+    const plusDays = (ymd, n) => {
+      const [y, m, d] = ymd.split('-').map(Number);
+      return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+    };
     for (const s of seed.supplements) {
       const id = uuid();
       supplementIds[s.key] = id;
@@ -139,6 +153,8 @@ try {
         s.watchFor,
         s.color,
         s.sortOrder,
+        s.everyNDays ?? null,
+        s.everyNDays ? plusDays(today, s.rotationOffset ?? 0) : null,
       );
     }
     counts.supplements = seed.supplements.length;

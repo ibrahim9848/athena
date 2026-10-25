@@ -38,6 +38,9 @@ export function buildSeed() {
         defaultDose: '1 tablet',
         color: '#B4385A',
         sortOrder: 0,
+        // Alternates with zinc: every other day, starting the day the seed runs.
+        everyNDays: 2,
+        rotationOffset: 0,
         ingredients: 'Zinc 15 mg · Vitamin B6 85 mg · Iron 11 mg',
         why: "Every other day keeps it off the zinc days and brings your B6 down to about 49 mg a day on average. Coffee lowers how much iron you absorb from it, so take it at least an hour away from your coffee.",
         watchFor:
@@ -50,6 +53,9 @@ export function buildSeed() {
         defaultDose: '1 chewable',
         color: '#B85D12',
         sortOrder: 1,
+        // The other half of the alternation: starts the day after the seed runs.
+        everyNDays: 2,
+        rotationOffset: 1,
         ingredients: 'Zinc 25 mg · Vitamin C 100 mg',
         why: 'It goes on the days you skip the multivitamin, so your pills give 15 or 25 mg of zinc a day instead of 40. Taking it with food makes it easier on your stomach. On Fridays it goes with the first dinner, to keep it hours away from the magnesium.',
         watchFor: null,
@@ -113,22 +119,21 @@ export function buildSeed() {
       { supplement: 'ashwa', slot: 'breakfast', days: EVERY, doseOverride: null, note: null, variant: null, sortOrder: 0 },
       // default: First lunch
       { supplement: 'omega', slot: 'lunch', days: EVERY, doseOverride: null, note: null, variant: null, sortOrder: 0 },
-      { supplement: 'multi', slot: 'lunch', days: [0, 2, 4, 6], doseOverride: null, note: 'At least an hour away from coffee', variant: null, sortOrder: 1 },
+      { supplement: 'multi', slot: 'lunch', days: EVERY, doseOverride: null, note: 'At least an hour away from coffee', variant: null, sortOrder: 1 },
       // default: Dinner
       { supplement: 'ashwa', slot: 'dinner', days: EVERY, doseOverride: null, note: null, variant: null, sortOrder: 0 },
       { supplement: 'crea', slot: 'dinner', days: EVERY, doseOverride: null, note: null, variant: null, sortOrder: 1 },
-      { supplement: 'zinc', slot: 'dinner', days: [1, 3, 5], doseOverride: null, note: null, variant: null, sortOrder: 2 },
+      { supplement: 'zinc', slot: 'dinner', days: EVERY, doseOverride: null, note: null, variant: null, sortOrder: 2 },
       // default: Before bed (magnesium doubles on gym days Thu–Sat)
       { supplement: 'mag', slot: 'bed', days: [0, 1, 2, 3], doseOverride: null, note: null, variant: null, sortOrder: 0 },
       { supplement: 'mag', slot: 'bed', days: [4, 5, 6], doseOverride: '2 capsules', note: 'Gym day dose', variant: null, sortOrder: 1 },
       // two_meal (Friday): First dinner
       { supplement: 'ashwa', slot: 'dinner1', days: EVERY, doseOverride: null, note: null, variant: 'two_meal', sortOrder: 0 },
       { supplement: 'omega', slot: 'dinner1', days: EVERY, doseOverride: null, note: null, variant: 'two_meal', sortOrder: 1 },
-      { supplement: 'zinc', slot: 'dinner1', days: [1, 3, 5], doseOverride: null, note: 'Keeps it hours away from the magnesium', variant: 'two_meal', sortOrder: 2 },
-      // The multivitamin's days don't include Friday, so this rule never shows
-      // on the two-meal day — kept on purpose so the user can toggle days later
-      // (SPEC 11.1).
-      { supplement: 'multi', slot: 'dinner1', days: [0, 2, 4, 6], doseOverride: null, note: 'At least an hour away from coffee', variant: 'two_meal', sortOrder: 3 },
+      { supplement: 'zinc', slot: 'dinner1', days: EVERY, doseOverride: null, note: 'Keeps it hours away from the magnesium', variant: 'two_meal', sortOrder: 2 },
+      // Multivitamin and zinc rotate every other day, so either can land on a
+      // Friday; whichever is due goes with the first dinner.
+      { supplement: 'multi', slot: 'dinner1', days: EVERY, doseOverride: null, note: 'At least an hour away from coffee', variant: 'two_meal', sortOrder: 3 },
       // two_meal (Friday): Second dinner
       { supplement: 'ashwa', slot: 'dinner2', days: EVERY, doseOverride: null, note: null, variant: 'two_meal', sortOrder: 0 },
       { supplement: 'crea', slot: 'dinner2', days: EVERY, doseOverride: null, note: null, variant: 'two_meal', sortOrder: 1 },

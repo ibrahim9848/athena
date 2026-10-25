@@ -3,7 +3,8 @@ import type { CSSProperties } from 'react';
 import { Fragment } from 'react';
 import type { Metadata } from 'next';
 import { requireUser } from '@/lib/auth';
-import { DAY_LETTER, DAY_NAMES } from '@/lib/dates';
+import { DAY_LETTER, DAY_NAMES, addDaysYmd, todayInTz, weekdayOfYmd } from '@/lib/dates';
+import { isRotating, isRotationDay, type PlanSupplement } from '@/lib/plan';
 import { getSupplementNotes, supplementsWithCoverage } from '@/server/supplements';
 import { PillGlyph } from '@/components/PillGlyph';
 import { Markdown } from '@/components/supplements/markdown';
@@ -26,6 +27,23 @@ function weekLabel(days: Set<number>, boosted: Set<number>, boostDose: string | 
     return `${base}, ${boostDose} on ${listDayNames([...boosted].sort((a, b) => a - b))}`;
   }
   return base;
+}
+
+/**
+ * "Every other day · today" — when a rotating supplement is next due, on a day
+ * its default rules also allow.
+ */
+function rotationText(s: PlanSupplement, today: string, days: Set<number>): string {
+  const n = s.everyNDays ?? 1;
+  const every = n === 2 ? 'Every other day' : `Every ${n} days`;
+  for (let i = 0; i < n * 7; i++) {
+    const date = addDaysYmd(today, i);
+    if (isRotationDay(s, date) && days.has(weekdayOfYmd(date))) {
+      const when = i === 0 ? 'today' : i === 1 ? 'tomorrow' : DAY_NAMES[weekdayOfYmd(date)];
+      return `${every} · ${when}`;
+    }
+  }
+  return every;
 }
 
 function WatchLines({ text }: { text: string }) {
@@ -56,6 +74,7 @@ function WatchLines({ text }: { text: string }) {
 export default async function FactsPage() {
   const user = await requireUser();
   const facts = supplementsWithCoverage(user.id);
+  const today = todayInTz(user.timezone).ymd;
   const notes = getSupplementNotes(user.id);
 
   const servingSlotIds = new Set<string>();
@@ -95,29 +114,36 @@ export default async function FactsPage() {
                     <PillGlyph form={supplement.form} color={supplement.color} />
                     {supplement.name}
                   </h3>
-                  <span
-                    className="wk"
-                    role="img"
-                    aria-label={weekLabel(days, boosted, boostDose)}
-                  >
-                    {DAY_LETTER.map((letter, d) => {
-                      const classes = [
-                        days.has(d) ? 'on' : null,
-                        boosted.has(d) ? 'x2' : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' ');
-                      return (
-                        <i
-                          key={d}
-                          className={classes || undefined}
-                          style={{ '--c': supplement.color } as CSSProperties}
-                        >
-                          {letter}
-                        </i>
-                      );
-                    })}
-                  </span>
+                  {isRotating(supplement) ? (
+                    <span className="badge" style={{ marginTop: 9 }}>
+                      {rotationText(supplement, today, days)}
+                    </span>
+                  ) : null}
+                  {isRotating(supplement) && days.size === 7 ? null : (
+                    <span
+                      className="wk"
+                      role="img"
+                      aria-label={weekLabel(days, boosted, boostDose)}
+                    >
+                      {DAY_LETTER.map((letter, d) => {
+                        const classes = [
+                          days.has(d) ? 'on' : null,
+                          boosted.has(d) ? 'x2' : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' ');
+                        return (
+                          <i
+                            key={d}
+                            className={classes || undefined}
+                            style={{ '--c': supplement.color } as CSSProperties}
+                          >
+                            {letter}
+                          </i>
+                        );
+                      })}
+                    </span>
+                  )}
                 </div>
                 <p className="fact-amt">
                   <b>{supplement.defaultDose}</b>

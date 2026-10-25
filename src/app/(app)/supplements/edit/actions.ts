@@ -5,8 +5,10 @@ import { and, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { dayVariants, mealSlots, scheduleRules, supplements } from '@/db/schema';
 import { requireUser, slideSessionCookie } from '@/lib/auth';
+import { addDaysYmd, todayInTz } from '@/lib/dates';
 import { newId } from '@/lib/ids';
-import { setSupplementNotes } from '@/server/supplements';
+import { canAlternate, resolveDay } from '@/lib/plan';
+import { getLogsForDate, getPlanData, setSupplementNotes } from '@/server/supplements';
 
 const SUPPLEMENT_FORMS = ['tablet', 'capsule', 'softgel', 'chewable', 'scoop', 'other'] as const;
 type SupplementForm = (typeof SUPPLEMENT_FORMS)[number];
@@ -59,6 +61,22 @@ function parseColor(v: string | null): string | null {
 
 function parseTime(v: string | null): string | null {
   return v && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : null;
+}
+
+/**
+ * The rotation fields from the supplement form. 1 (or empty) means no
+ * rotation; a rotation without a valid start date starts today in the user's timezone.
+ */
+function parseRotation(
+  fd: FormData,
+  timezone: string,
+): { everyNDays: number | null; rotationStart: string | null } {
+  const n = Math.min(30, Math.max(1, intOr(fd, 'everyNDays', 1)));
+  if (n <= 1) return { everyNDays: null, rotationStart: null };
+  const start = optStr(fd, 'rotationStart');
+  // Round-trip through date arithmetic so impossible dates (2026-02-31) are rejected.
+  const valid = !!start && /^\d{4}-\d{2}-\d{2}$/.test(start) && addDaysYmd(start, 0) === start;
+  return { everyNDays: n, rotationStart: valid ? start : todayInTz(timezone).ymd };
 }
 
 /** '', 'default' (any case) and null all mean the default variant. */
@@ -145,6 +163,7 @@ export async function upsertSupplementAction(formData: FormData): Promise<void> 
         color: parseColor(optStr(formData, 'color')) ?? existing.color,
         sortOrder: intOr(formData, 'sortOrder', existing.sortOrder),
         archived: isChecked(formData, 'archived'),
+        ...parseRotation(formData, user.timezone),
         ...details,
       })
       .where(and(eq(supplements.id, id), eq(supplements.userId, user.id)))
@@ -366,6 +385,16 @@ export async function deleteRuleAction(formData: FormData): Promise<void> {
 }
 
 /** "Alternate with…": rule A takes Sun/Tue/Thu/Sat, rule B takes Mon/Wed/Fri. */
+/**
+ * Make the two rules' supplements alternate every other day, counting on
+ * across weeks. Their rules are widened to all weekdays so the rotation alone
+ * decides which one is due (canAlternate guarantees one rule per variant, so
+ * nothing doubles up).
+ *
+ * Which one is due today continues the existing pattern: one already taken
+ * today stays today's; otherwise the one that was due or taken yesterday goes
+ * tomorrow, so the switch-over never repeats a supplement two days running.
+ */
 export async function setAlternatingAction(formData: FormData): Promise<void> {
   const user = await requireUser();
   slideSessionCookie();
@@ -374,15 +403,55 @@ export async function setAlternatingAction(formData: FormData): Promise<void> {
   if (!ruleAId || !ruleBId || ruleAId === ruleBId) return;
   const ruleA = getRule(user.id, ruleAId);
   const ruleB = getRule(user.id, ruleBId);
-  if (!ruleA || !ruleB) return;
-  db.update(scheduleRules)
-    .set({ days: [0, 2, 4, 6] })
-    .where(and(eq(scheduleRules.id, ruleAId), eq(scheduleRules.userId, user.id)))
-    .run();
-  db.update(scheduleRules)
-    .set({ days: [1, 3, 5] })
-    .where(and(eq(scheduleRules.id, ruleBId), eq(scheduleRules.userId, user.id)))
-    .run();
+  if (!ruleA || !ruleB || ruleA.supplementId === ruleB.supplementId) return;
+  const a = ruleA.supplementId;
+  const b = ruleB.supplementId;
+
+  const data = getPlanData(user.id);
+  const supA = data.supplements.find((s) => s.id === a);
+  const supB = data.supplements.find((s) => s.id === b);
+  if (!supA || !supB || supA.archived || supB.archived) return;
+  const rulesOf = (id: string) => data.rules.filter((r) => r.supplementId === id);
+  if (!canAlternate(rulesOf(a), rulesOf(b))) return;
+
+  const today = todayInTz(user.timezone).ymd;
+  const onDay = (date: string) => {
+    const items = resolveDay({ date, ...data, logs: getLogsForDate(user.id, date) }).slots.flatMap(
+      (s) => s.items,
+    );
+    return {
+      due: new Set(items.map((i) => i.supplement.id)),
+      taken: new Set(items.filter((i) => i.taken).map((i) => i.supplement.id)),
+    };
+  };
+  const now = onDay(today);
+  const before = onDay(addDaysYmd(today, -1));
+  let first = a;
+  if (now.taken.has(b) && !now.taken.has(a)) first = b;
+  else if (!now.taken.has(a) && !now.taken.has(b)) {
+    const hadA = before.taken.has(a) || before.due.has(a);
+    const hadB = before.taken.has(b) || before.due.has(b);
+    if (hadA && !hadB) first = b;
+  }
+  const second = first === a ? b : a;
+  const pairs: [string, string][] = [
+    [first, today],
+    [second, addDaysYmd(today, 1)],
+  ];
+  db.transaction((tx) => {
+    for (const [supplementId, rotationStart] of pairs) {
+      tx.update(supplements)
+        .set({ everyNDays: 2, rotationStart })
+        .where(and(eq(supplements.id, supplementId), eq(supplements.userId, user.id)))
+        .run();
+      tx.update(scheduleRules)
+        .set({ days: [0, 1, 2, 3, 4, 5, 6] })
+        .where(
+          and(eq(scheduleRules.supplementId, supplementId), eq(scheduleRules.userId, user.id)),
+        )
+        .run();
+    }
+  });
   revalidateSupplementPages();
 }
 

@@ -20,6 +20,10 @@ export const supplements = sqliteTable('supplements', {
   color: text('color').notNull().default('#d22f45'),
   sortOrder: integer('sort_order').notNull().default(0),
   archived: integer('archived', { mode: 'boolean' }).notNull().default(false),
+  // Rotation: repeat every N days counted from rotation_start (YYYY-MM-DD),
+  // continuously across weeks. NULL or 1 = no rotation, rules' weekdays only.
+  everyNDays: integer('every_n_days'),
+  rotationStart: text('rotation_start'),
 });
 
 export const mealSlots = sqliteTable('meal_slots', {

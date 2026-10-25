@@ -7,7 +7,10 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+  canAlternate,
   doseCount,
+  isRotating,
+  isRotationDay,
   resolveDay,
   resolveWeek,
   type PlanInput,
@@ -366,5 +369,136 @@ describe('doseCount', () => {
     expect(doseCount('9 tablets')).toBe(4);
     expect(doseCount('a pinch')).toBe(1);
     expect(doseCount('')).toBe(1);
+  });
+});
+
+/** The seeded plan with multivitamin and zinc on an every-other-day rotation. */
+function rotatingFixture(multiStart = SUNDAY): Fixture {
+  const f = makeFixture();
+  return {
+    ...f,
+    supplements: f.supplements.map((s) =>
+      s.id === 'multi'
+        ? { ...s, everyNDays: 2, rotationStart: multiStart }
+        : s.id === 'zinc'
+          ? { ...s, everyNDays: 2, rotationStart: addDaysYmd(multiStart, 1) }
+          : s,
+    ),
+    rules: f.rules.map((r) =>
+      r.supplementId === 'multi' || r.supplementId === 'zinc' ? { ...r, days: ALL_DAYS } : r,
+    ),
+  };
+}
+
+describe('resolveDay — every-other-day rotation', () => {
+  const SATURDAY = '2026-03-07';
+  const NEXT_SUNDAY = '2026-03-08';
+
+  it('fixed weekday rules repeat the multivitamin from Saturday to Sunday (the bug)', () => {
+    expect(has(resolve(SATURDAY), 'multi')).toBe(true);
+    expect(has(resolve(NEXT_SUNDAY), 'multi')).toBe(true);
+  });
+
+  it('the rotation alternates across the Saturday→Sunday boundary', () => {
+    const f = rotatingFixture();
+    expect(has(resolve(SATURDAY, [], f), 'multi')).toBe(true);
+    expect(has(resolve(NEXT_SUNDAY, [], f), 'multi')).toBe(false);
+    expect(has(resolve(NEXT_SUNDAY, [], f), 'zinc')).toBe(true);
+  });
+
+  it('strictly alternates for six weeks, exactly one of the pair every day', () => {
+    const f = rotatingFixture();
+    for (let i = 0; i < 42; i++) {
+      const day = resolve(addDaysYmd(SUNDAY, i), [], f);
+      expect(has(day, 'multi')).toBe(i % 2 === 0);
+      expect(has(day, 'zinc')).toBe(i % 2 === 1);
+    }
+  });
+
+  it('the phase arithmetic itself holds for dates before the start', () => {
+    const s = { everyNDays: 2, rotationStart: SUNDAY };
+    expect(isRotationDay(s, addDaysYmd(SUNDAY, -1))).toBe(false);
+    expect(isRotationDay(s, addDaysYmd(SUNDAY, -2))).toBe(true);
+    expect(isRotationDay(s, addDaysYmd(SUNDAY, -7))).toBe(false);
+  });
+
+  it('before the rotation began, history shows only what was actually taken', () => {
+    const f = rotatingFixture();
+    const before = addDaysYmd(SUNDAY, -3); // a Thursday (default day variant)
+    // Under the old weekday rules either could have been due; nothing is invented.
+    expect(has(resolve(before, [], f), 'multi')).toBe(false);
+    expect(has(resolve(before, [], f), 'zinc')).toBe(false);
+    // A real tick from back then still shows, and counts as taken.
+    const tick = log('r-zinc-dinner', `${before}T19:00:00Z`, false, before);
+    const day = resolve(before, [tick], f);
+    expect(has(day, 'zinc')).toBe(true);
+    expect(allItems(day).find((i) => i.supplement.id === 'zinc')?.taken).toBe(true);
+    expect(has(day, 'multi')).toBe(false);
+  });
+
+  it('on a two-meal Friday, whichever is due goes with the first dinner', () => {
+    const f = rotatingFixture();
+    const zincFriday = resolve(FRIDAY, [], f);
+    expect(zincFriday.slots.find((s) => s.slot.id === 'dinner1')!.items.map((i) => i.supplement.id))
+      .toContain('zinc');
+    expect(has(zincFriday, 'multi')).toBe(false);
+
+    const multiFriday = resolve(addDaysYmd(FRIDAY, 7), [], f);
+    const dinner1 = multiFriday.slots.find((s) => s.slot.id === 'dinner1')!;
+    const multi = dinner1.items.find((i) => i.supplement.id === 'multi');
+    expect(multi?.note).toBe('At least an hour away from coffee');
+    expect(has(multiFriday, 'zinc')).toBe(false);
+  });
+
+  it('the day label names the rotating supplement that is due', () => {
+    const f = rotatingFixture();
+    expect(resolve(SATURDAY, [], f).dayLabel).toBe('Multivitamin day');
+    expect(resolve(NEXT_SUNDAY, [], f).dayLabel).toBe('Zinc day');
+  });
+
+  it('weekday rules still apply on top of a rotation', () => {
+    const f = rotatingFixture();
+    f.rules = f.rules.map((r) => (r.id === 'r-multi-lunch' ? { ...r, days: [0] } : r));
+    // Sundays are 7 days apart, so only every other Sunday is a rotation day.
+    expect(has(resolve(SUNDAY, [], f), 'multi')).toBe(true);
+    expect(has(resolve(NEXT_SUNDAY, [], f), 'multi')).toBe(false);
+    expect(has(resolve(addDaysYmd(SUNDAY, 14), [], f), 'multi')).toBe(true);
+    expect(has(resolve(addDaysYmd(SUNDAY, 2), [], f), 'multi')).toBe(false);
+  });
+
+  it('supports longer rotations', () => {
+    const s = { everyNDays: 3, rotationStart: SUNDAY };
+    expect([0, 1, 2, 3, 4, 5, 6].map((i) => isRotationDay(s, addDaysYmd(SUNDAY, i)))).toEqual([
+      true, false, false, true, false, false, true,
+    ]);
+  });
+
+  it('every day (or no start date) is not a rotation', () => {
+    expect(isRotating({ everyNDays: 1, rotationStart: SUNDAY })).toBe(false);
+    expect(isRotating({ everyNDays: 2, rotationStart: null })).toBe(false);
+    expect(isRotating({})).toBe(false);
+    expect(isRotationDay({ everyNDays: 2, rotationStart: null }, MONDAY)).toBe(true);
+  });
+});
+
+describe('canAlternate', () => {
+  const f = makeFixture();
+  const rulesOf = (id: string) => f.rules.filter((r) => r.supplementId === id);
+
+  it('allows a pair with one rule per day variant each (multivitamin + zinc)', () => {
+    expect(canAlternate(rulesOf('multi'), rulesOf('zinc'))).toBe(true);
+  });
+
+  it('refuses a supplement split across rules on the same day type (magnesium doses)', () => {
+    expect(canAlternate(rulesOf('multi'), rulesOf('mag'))).toBe(false);
+  });
+
+  it('refuses when only one of them has a rule for a day variant', () => {
+    const zincDefaultOnly = rulesOf('zinc').filter((r) => r.variant == null);
+    expect(canAlternate(rulesOf('multi'), zincDefaultOnly)).toBe(false);
+  });
+
+  it('refuses a supplement with no rules', () => {
+    expect(canAlternate(rulesOf('multi'), [])).toBe(false);
   });
 });

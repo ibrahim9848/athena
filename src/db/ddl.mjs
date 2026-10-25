@@ -34,7 +34,9 @@ CREATE TABLE IF NOT EXISTS supplements (
   notes TEXT,
   color TEXT NOT NULL DEFAULT '#d22f45',
   sort_order INTEGER NOT NULL DEFAULT 0,
-  archived INTEGER NOT NULL DEFAULT 0
+  archived INTEGER NOT NULL DEFAULT 0,
+  every_n_days INTEGER,
+  rotation_start TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_supplements_user ON supplements(user_id);
 
@@ -201,9 +203,24 @@ CREATE TABLE IF NOT EXISTS reminder_sends (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_reminder_sends_once ON reminder_sends(reminder_id, sent_for_date);
 `;
 
+/**
+ * Columns added after the first release. CREATE TABLE IF NOT EXISTS leaves
+ * existing tables untouched, so these are ALTERed in when missing.
+ */
+const ADDED_COLUMNS = [
+  ['supplements', 'every_n_days', 'INTEGER'],
+  ['supplements', 'rotation_start', 'TEXT'],
+];
+
 /** Apply the schema to a better-sqlite3 Database instance. */
 export function applySchema(sqlite) {
   sqlite.pragma('journal_mode = WAL');
   sqlite.pragma('foreign_keys = ON');
   sqlite.exec(SCHEMA_SQL);
+  for (const [table, column, type] of ADDED_COLUMNS) {
+    const columns = sqlite.prepare(`PRAGMA table_info(${table})`).all();
+    if (!columns.some((c) => c.name === column)) {
+      sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+    }
+  }
 }
