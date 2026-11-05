@@ -863,55 +863,69 @@ button {
   border-radius: 2px;
 }
 /* care products: drop (serum, oil, foam), tube (gel, cream), bottle (cleanser,
-   shampoo), tool (stamp, roller) — same CSS-only style as the pills */
+   shampoo), tool (stamp, roller) — same CSS-only style as the pills and no
+   taller than them (12px), so a care day cell grows only with its item count */
 .pill.drop {
-  width: 11px;
-  height: 11px;
-  margin: 2px 1px 1px;
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
+  /* a square with its top-left corner kept sharp, turned so that corner
+     points up: a water drop */
+  width: 10px;
+  height: 10px;
+  border-radius: 0 50% 50% 50%;
+  transform: rotate(45deg);
   background: var(--c);
 }
 .pill.tube {
-  width: 10px;
-  height: 22px;
+  width: 22px;
+  height: 10px;
   position: relative;
-  border-radius: 2px 2px 5px 5px;
-  background: var(--c);
 }
 .pill.tube::before {
+  /* body lying down: flat crimped end left, rounded shoulder right */
   content: '';
   position: absolute;
-  left: 2px;
+  left: 0;
   top: 0;
-  width: 6px;
-  height: 4px;
+  width: 18px;
+  height: 10px;
+  border-radius: 1px 5px 5px 1px;
+  background: var(--c);
+}
+.pill.tube::after {
+  /* cap */
+  content: '';
+  position: absolute;
+  left: 17px;
+  top: 2.5px;
+  width: 5px;
+  height: 5px;
   border-radius: 1px;
-  background: var(--cap);
+  background: color-mix(in srgb, var(--c) 70%, var(--gloss));
 }
 .pill.bottle {
   width: 12px;
-  height: 22px;
+  height: 12px;
   position: relative;
 }
 .pill.bottle::before {
+  /* neck */
   content: '';
   position: absolute;
-  left: 3px;
+  left: 4px;
   top: 0;
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 3px;
   border-radius: 1px 1px 0 0;
   background: var(--c);
 }
 .pill.bottle::after {
+  /* body */
   content: '';
   position: absolute;
   left: 0;
   right: 0;
-  top: 5px;
+  top: 3px;
   bottom: 0;
-  border-radius: 3px 3px 4px 4px;
+  border-radius: 4px 4px 3px 3px;
   background: var(--c);
 }
 .pill.tool {

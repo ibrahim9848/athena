@@ -401,9 +401,9 @@ function buildCare() {
   const stampWatch =
     'Redness and pinpoint bleeding are normal, real pain is not. Spray the needles with 70% alcohol before and after; never share it. Skip the week if the scalp is sore, has spots or is sunburnt. Replace every 2–3 months, sooner if it drags.';
   const rollerWatch =
-    '0.5 mm only and never the scalp stamp. Spray with 70% alcohol before and after. Not over active pimples, eyes or lips. Bleeding means too much pressure. Skip the week with pimples in the area, sunburn or peeling. Replace every 2–3 months. Next morning: water, moisturizer, sunscreen; adapalene restarts Monday.';
+    '0.5 mm only and never the scalp stamp. Spray with 70% alcohol before and after. Not over active pimples, eyes or lips. Bleeding means too much pressure. Skip the week with pimples in the area, sunburn or peeling. Replace every 2–3 months.\nNext morning: water, moisturizer, sunscreen; adapalene restarts Monday.';
   const adapaleneWatch =
-    'Dryness and peeling in weeks 2–6 are normal and pimples can flare in the first month. If it stings or flakes badly, drop back to 2 nights a week. Keep off eye corners, nostril creases and lips. Alternative: azelaic acid 10% on the same nights — gentler, slower.';
+    'Dryness and peeling in weeks 2–6 are normal and pimples can flare in the first month. If it stings or flakes badly, drop back to 2 nights a week. Keep off eye corners, nostril creases and lips.\nAlternative: azelaic acid 10% on the same nights — gentler, slower.';
 
   return {
     slots: [
