@@ -13,6 +13,14 @@
 
 const EVERY = [0, 1, 2, 3, 4, 5, 6];
 
+/** Sunday of week 1 of the care routine; its phase-in dates count from here. */
+export const CARE_START = '2026-11-08';
+
+function plusDays(ymd, n) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+
 export function buildSeed() {
   return {
     /* ---------- meal slots (6 rows total; `bed` is shared between the
@@ -372,5 +380,205 @@ export function buildSeed() {
         },
       ],
     },
+
+    /* ---------- care plan (scalp + face routine) ---------- */
+    care: buildCare(),
+  };
+}
+
+/**
+ * The care plan (design doc 2026-11-05, appendix A): the owner's scalp and
+ * face routine as slots, items and weekday rules on the supplements engine.
+ * Week 1 starts on CARE_START; the Tue/Thu adapalene nights join in week 4 and
+ * the face roller runs every other Saturday from week 5.
+ */
+function buildCare() {
+  const adapaleneFull = plusDays(CARE_START, 21); // Sunday of week 4
+  const firstRoller = plusDays(CARE_START, 34); // Saturday of week 5
+  const MON_SAT = [1, 2, 3, 4, 5, 6];
+  const SUN_FRI = [0, 1, 2, 3, 4, 5];
+  const WASH = [1, 3, 5];
+  const stampWatch =
+    'Redness and pinpoint bleeding are normal, real pain is not. Spray the needles with 70% alcohol before and after; never share it. Skip the week if the scalp is sore, has spots or is sunburnt. Replace every 2–3 months, sooner if it drags.';
+  const rollerWatch =
+    '0.5 mm only and never the scalp stamp. Spray with 70% alcohol before and after. Not over active pimples, eyes or lips. Bleeding means too much pressure. Skip the week with pimples in the area, sunburn or peeling. Replace every 2–3 months. Next morning: water, moisturizer, sunscreen; adapalene restarts Monday.';
+  const adapaleneWatch =
+    'Dryness and peeling in weeks 2–6 are normal and pimples can flare in the first month. If it stings or flakes badly, drop back to 2 nights a week. Keep off eye corners, nostril creases and lips. Alternative: azelaic acid 10% on the same nights — gentler, slower.';
+
+  return {
+    slots: [
+      { key: 'am_face', name: 'Morning · Face', subtitle: null, defaultTime: '07:30', sortOrder: 0 },
+      { key: 'am_scalp', name: 'Morning · Scalp', subtitle: null, defaultTime: '07:30', sortOrder: 1 },
+      { key: 'pm_scalp', name: 'Evening · Scalp', subtitle: null, defaultTime: '21:30', sortOrder: 2 },
+      { key: 'pm_face', name: 'Evening · Face', subtitle: null, defaultTime: '21:30', sortOrder: 3 },
+    ],
+    variants: [],
+    supplements: [
+      {
+        key: 'cleanser',
+        name: 'Cleanser (CeraVe Foaming)',
+        form: 'bottle',
+        defaultDose: 'wash',
+        color: '#4FA3D1',
+        sortOrder: 0,
+        badge: null,
+        why: 'First step morning and evening.',
+        watchFor: null,
+      },
+      {
+        key: 'niacinamide',
+        name: 'Niacinamide (The Ordinary 10% + Zinc 1%)',
+        form: 'drop',
+        defaultDose: 'a few drops',
+        color: '#C44DB0',
+        sortOrder: 1,
+        badge: null,
+        why: 'Every morning under sunscreen.',
+        watchFor: null,
+      },
+      {
+        key: 'sunscreen',
+        name: 'Sunscreen (Anthelios UVMune 400 SPF 50+)',
+        form: 'tube',
+        defaultDose: 'two finger-lengths, face and neck',
+        color: '#E0A526',
+        sortOrder: 2,
+        badge: null,
+        why: 'The rule that matters most: without it the sun keeps the marks dark. Two finger-lengths for face and neck as the last morning step; reapply around midday if outside.',
+        watchFor: null,
+      },
+      {
+        key: 'adapalene',
+        name: 'Adapalene (Differin 0.1%)',
+        form: 'tube',
+        defaultDose: 'pea-sized, on dry skin',
+        color: '#E06D3A',
+        sortOrder: 3,
+        badge: null,
+        why: 'Monday–Thursday nights on fully dry skin, a pea for the whole face. Weeks 1–3 Monday and Wednesday only; Tuesday and Thursday join from week 4.',
+        watchFor: adapaleneWatch,
+      },
+      {
+        key: 'roller',
+        name: 'Face roller 0.5 mm',
+        form: 'tool',
+        defaultDose: 'light pressure, 4–5 passes each direction',
+        color: '#7A7F87',
+        sortOrder: 4,
+        badge: 'Roller night',
+        why: `Every other Saturday from week 5 (first ${firstRoller}): cleanser, dry, roll, moisturizer only. Light pressure, 4–5 passes in each direction, lifting between passes.`,
+        watchFor: rollerWatch,
+        everyNDays: 14,
+        rotationStart: firstRoller,
+      },
+      {
+        key: 'moisturizer',
+        name: 'Moisturizer (CeraVe Lotion)',
+        form: 'bottle',
+        defaultDose: 'thin layer',
+        color: '#3A9D8F',
+        sortOrder: 5,
+        badge: null,
+        why: 'Every evening, after adapalene on adapalene nights.',
+        watchFor: null,
+      },
+      {
+        key: 'minoxidil',
+        name: 'Minoxidil foam',
+        form: 'drop',
+        defaultDose: 'on dry scalp, skin not hair',
+        color: '#1F8AA8',
+        sortOrder: 6,
+        badge: null,
+        why: 'Morning and evening every day; the rest of the routine is arranged around it. Dry scalp, on the skin rather than the hair; leave it at least 4 hours before washing or heavy sweating.',
+        watchFor: 'No minoxidil for 24 hours after stamping (Saturday night and Sunday morning).',
+      },
+      {
+        key: 'rosemary',
+        name: 'Rosemary oil (Mielle)',
+        form: 'drop',
+        defaultDose: 'massage in, wait 1 hr',
+        color: '#7FA62B',
+        sortOrder: 7,
+        badge: null,
+        why: 'Massage in on wash nights and leave for an hour before the ketoconazole shampoo.',
+        watchFor: 'Not within 24 hours of stamping.',
+      },
+      {
+        key: 'ketoconazole',
+        name: 'Ketoconazole shampoo',
+        form: 'bottle',
+        defaultDose: 'leave 3–5 min, then dry',
+        color: '#5B7A99',
+        sortOrder: 8,
+        badge: 'Wash night',
+        why: 'Three wash nights a week; leave it on 3–5 minutes, dry fully before minoxidil.',
+        watchFor: 'Not within 24 hours of stamping.',
+      },
+      {
+        key: 'shampoo',
+        name: 'Regular shampoo',
+        form: 'bottle',
+        defaultDose: 'then dry',
+        color: '#8E9AA6',
+        sortOrder: 9,
+        badge: null,
+        why: 'Saturday only, before the stamp; dry fully first.',
+        watchFor: null,
+      },
+      {
+        key: 'stamp',
+        name: 'Derma stamp 1.0 mm',
+        form: 'tool',
+        defaultDose: '4–5 presses per spot on thinning areas',
+        color: '#D22F45',
+        sortOrder: 10,
+        badge: 'Stamp night',
+        why: 'Weekly on Saturday after a regular shampoo: 4–5 straight presses per spot across the thinning areas. Start at 1.0 mm; after about a month with no lasting irritation, 1.5 mm.',
+        watchFor: stampWatch,
+      },
+      {
+        key: 'massage',
+        name: 'Scalp massage',
+        form: 'other',
+        defaultDose: '4 minutes',
+        color: '#A67C52',
+        sortOrder: 11,
+        badge: null,
+        why: '4 minutes on Tuesday and Thursday; skip Saturday and Sunday.',
+        watchFor: null,
+      },
+    ],
+    rules: [
+      // Morning · Face
+      { supplement: 'cleanser', slot: 'am_face', days: MON_SAT, doseOverride: null, note: null, variant: null, sortOrder: 0, startsOn: null },
+      { supplement: 'cleanser', slot: 'am_face', days: [0], doseOverride: null, note: 'Morning after rolling: water only, then moisturizer', variant: null, sortOrder: 0, startsOn: null },
+      { supplement: 'niacinamide', slot: 'am_face', days: MON_SAT, doseOverride: null, note: null, variant: null, sortOrder: 1, startsOn: null },
+      { supplement: 'niacinamide', slot: 'am_face', days: [0], doseOverride: null, note: 'Skip the morning after rolling', variant: null, sortOrder: 1, startsOn: null },
+      { supplement: 'sunscreen', slot: 'am_face', days: EVERY, doseOverride: null, note: 'Last step. Reapply around midday if outside', variant: null, sortOrder: 2, startsOn: null },
+      // Morning · Scalp
+      { supplement: 'minoxidil', slot: 'am_scalp', days: MON_SAT, doseOverride: null, note: null, variant: null, sortOrder: 0, startsOn: null },
+      // Evening · Scalp
+      { supplement: 'rosemary', slot: 'pm_scalp', days: WASH, doseOverride: null, note: null, variant: null, sortOrder: 0, startsOn: null },
+      { supplement: 'ketoconazole', slot: 'pm_scalp', days: WASH, doseOverride: null, note: null, variant: null, sortOrder: 1, startsOn: null },
+      { supplement: 'shampoo', slot: 'pm_scalp', days: [6], doseOverride: null, note: null, variant: null, sortOrder: 2, startsOn: null },
+      { supplement: 'stamp', slot: 'pm_scalp', days: [6], doseOverride: null, note: 'Alcohol spray before and after. Nothing on the scalp for 24 h', variant: null, sortOrder: 3, startsOn: null },
+      { supplement: 'minoxidil', slot: 'pm_scalp', days: SUN_FRI, doseOverride: null, note: 'Leave on 4 h before washing', variant: null, sortOrder: 4, startsOn: null },
+      { supplement: 'massage', slot: 'pm_scalp', days: [2, 4], doseOverride: null, note: null, variant: null, sortOrder: 5, startsOn: null },
+      // Evening · Face
+      { supplement: 'cleanser', slot: 'pm_face', days: EVERY, doseOverride: null, note: null, variant: null, sortOrder: 0, startsOn: null },
+      { supplement: 'adapalene', slot: 'pm_face', days: [1, 3], doseOverride: null, note: 'Keep off eye corners, nostril creases and lips', variant: null, sortOrder: 1, startsOn: null },
+      { supplement: 'adapalene', slot: 'pm_face', days: [2, 4], doseOverride: null, note: 'Keep off eye corners, nostril creases and lips', variant: null, sortOrder: 1, startsOn: adapaleneFull },
+      { supplement: 'roller', slot: 'pm_face', days: [6], doseOverride: null, note: 'Alcohol spray before and after. Moisturizer only tonight', variant: null, sortOrder: 2, startsOn: null },
+      { supplement: 'moisturizer', slot: 'pm_face', days: EVERY, doseOverride: null, note: null, variant: null, sortOrder: 3, startsOn: null },
+    ],
+    notes: [
+      '## Rules to remember',
+      '- After stamping, nothing goes on the scalp for 24 hours — no minoxidil, ketoconazole or rosemary oil.',
+      '- Sunscreen every morning; without it nothing else works.',
+      "- Don't squeeze pimples — that is what leaves new marks.",
+      '- On stamp Saturdays, roll the face first, then stamp the scalp, each with its own tool.',
+      '- Progress photos on the 1st of each month: hairline and crown, and both cheeks, same light and angle. Judge hair at 3–6 months, skin at 3 months (most marks fade by 4–6).',
+    ].join('\n'),
   };
 }

@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 /**
- * Load the default plans (SPEC.md section 11) into a user's account.
+ * Load the default plans (SPEC.md section 11, plus the care routine) into a
+ * user's account.
  *
- *   npm run seed -- --user ibrahim
+ *   npm run seed -- --user ibrahim                # everything (a fresh user)
+ *   npm run seed -- --user ibrahim --plan care    # only the care routine
  *
- * Idempotent: it REPLACES the user's supplements, slots, rules, variants,
- * plan notes, programs, exercises, workouts and logs with the seed, inside
- * one transaction. Other users are untouched.
+ * Idempotent, inside one transaction. `--plan all` (the default) REPLACES the
+ * user's supplements, care routine, programs, exercises, workouts, logs and
+ * reminders with the seed. `--plan supplements` or `--plan care` replaces only
+ * that plan's slots, items, rules, variants, notes, ticks and slot reminders —
+ * the other plan and the program are untouched. Other users are untouched.
  */
 
 import fs from 'node:fs';
@@ -16,7 +20,8 @@ import Database from 'better-sqlite3';
 import { applySchema, assertNoForeignOwner } from '../src/db/ddl.mjs';
 import { buildSeed } from './seed-data.mjs';
 
-const USAGE = 'Usage: npm run seed -- --user <username>';
+const USAGE = 'Usage: npm run seed -- --user <username> [--plan supplements|care|all]';
+const PLAN_CHOICES = ['supplements', 'care', 'all'];
 
 function fail(message) {
   console.error(`Error: ${message}`);
@@ -26,6 +31,7 @@ function fail(message) {
 /* ---------- arguments ---------- */
 
 let username;
+let plan = 'all';
 const argv = process.argv.slice(2);
 for (let i = 0; i < argv.length; i++) {
   const arg = argv[i];
@@ -36,11 +42,18 @@ for (let i = 0; i < argv.length; i++) {
     username = argv[++i];
   } else if (arg.startsWith('--user=')) {
     username = arg.slice('--user='.length);
+  } else if (arg === '--plan') {
+    plan = argv[++i];
+  } else if (arg.startsWith('--plan=')) {
+    plan = arg.slice('--plan='.length);
   } else {
     fail(`Unexpected argument '${arg}'.\n\n${USAGE}`);
   }
 }
 if (!username) fail(`--user is required.\n\n${USAGE}`);
+if (!PLAN_CHOICES.includes(plan)) {
+  fail(`--plan must be one of ${PLAN_CHOICES.join(', ')}.\n\n${USAGE}`);
+}
 
 /* ---------- database ---------- */
 
@@ -70,14 +83,35 @@ try {
   const seed = buildSeed();
   const counts = {};
 
-  const run = db.transaction(() => {
-    /* ----- wipe the user's existing data (children first) ----- */
+  // Rotations without a fixed start count from "today" in the user's own timezone.
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: user.timezone || 'Asia/Riyadh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  const plusDays = (ymd, n) => {
+    const [y, m, d] = ymd.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+  };
+
+  const noteRemovedReminders = (n, what) => {
+    if (n > 0) {
+      console.log(
+        `Note: removed ${n} reminder(s) that pointed at the replaced ${what} — re-create them under Settings → Reminders.`,
+      );
+    }
+  };
+
+  /* ----- wipe everything of this user's (children first) ----- */
+  const wipeAll = () => {
     db.prepare('DELETE FROM supplement_logs WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM schedule_rules WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM day_variants WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM meal_slots WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM supplements WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM supplement_settings WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM plan_settings WHERE user_id = ?').run(userId);
     db.prepare(
       'DELETE FROM workout_sets WHERE workout_id IN (SELECT id FROM workouts WHERE user_id = ?)',
     ).run(userId);
@@ -100,76 +134,111 @@ try {
     db.prepare(
       'DELETE FROM reminder_sends WHERE reminder_id IN (SELECT id FROM reminders WHERE user_id = ?)',
     ).run(userId);
-    const removedReminders = db.prepare('DELETE FROM reminders WHERE user_id = ?').run(userId);
-    if (removedReminders.changes > 0) {
-      console.log(
-        `Note: removed ${removedReminders.changes} reminder(s) that pointed at the replaced plan — re-create them under Settings → Reminders.`,
-      );
-    }
+    const removed = db.prepare('DELETE FROM reminders WHERE user_id = ?').run(userId);
+    noteRemovedReminders(removed.changes, 'plan');
+  };
 
-    /* ----- supplements ----- */
+  /* ----- wipe one plan's rows only (children first), plus the slot
+     reminders that pointed at its slots ----- */
+  const wipePlan = (key) => {
+    db.prepare(
+      `DELETE FROM supplement_logs WHERE user_id = ? AND rule_id IN (
+         SELECT r.id FROM schedule_rules r JOIN supplements s ON s.id = r.supplement_id
+         WHERE s.user_id = ? AND s.plan = ?
+       )`,
+    ).run(userId, userId, key);
+    db.prepare(
+      `DELETE FROM schedule_rules WHERE user_id = ? AND supplement_id IN (
+         SELECT id FROM supplements WHERE user_id = ? AND plan = ?
+       )`,
+    ).run(userId, userId, key);
+    db.prepare(
+      `DELETE FROM reminder_sends WHERE reminder_id IN (
+         SELECT id FROM reminders WHERE user_id = ? AND kind = 'slot' AND ref_id IN (
+           SELECT id FROM meal_slots WHERE user_id = ? AND plan = ?
+         )
+       )`,
+    ).run(userId, userId, key);
+    const removed = db
+      .prepare(
+        `DELETE FROM reminders WHERE user_id = ? AND kind = 'slot' AND ref_id IN (
+           SELECT id FROM meal_slots WHERE user_id = ? AND plan = ?
+         )`,
+      )
+      .run(userId, userId, key);
+    db.prepare('DELETE FROM day_variants WHERE user_id = ? AND plan = ?').run(userId, key);
+    db.prepare('DELETE FROM meal_slots WHERE user_id = ? AND plan = ?').run(userId, key);
+    db.prepare('DELETE FROM supplements WHERE user_id = ? AND plan = ?').run(userId, key);
+    db.prepare('DELETE FROM plan_settings WHERE user_id = ? AND plan = ?').run(userId, key);
+    noteRemovedReminders(removed.changes, `${key} slots`);
+  };
+
+  /* ----- one plan: slots, variants, items, rules, notes ----- */
+  const insertPlan = (key, block) => {
     const slotIds = {};
     const insertSlot = db.prepare(
-      `INSERT INTO meal_slots (id, user_id, key, name, subtitle, default_time, sort_order)
-       VALUES (?, ?, ?, ?, ?, NULL, ?)`,
+      `INSERT INTO meal_slots (id, user_id, plan, key, name, subtitle, default_time, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     );
-    for (const slot of seed.mealSlots) {
+    for (const slot of block.slots) {
       const id = uuid();
       slotIds[slot.key] = id;
-      insertSlot.run(id, userId, slot.key, slot.name, slot.subtitle, slot.sortOrder);
+      insertSlot.run(
+        id,
+        userId,
+        key,
+        slot.key,
+        slot.name,
+        slot.subtitle,
+        slot.defaultTime ?? null,
+        slot.sortOrder,
+      );
     }
-    counts.meal_slots = seed.mealSlots.length;
+    counts[`${key}: meal_slots`] = block.slots.length;
 
     const insertVariant = db.prepare(
-      'INSERT INTO day_variants (id, user_id, day, variant, label) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO day_variants (id, user_id, plan, day, variant, label) VALUES (?, ?, ?, ?, ?, ?)',
     );
-    for (const v of seed.dayVariants) insertVariant.run(uuid(), userId, v.day, v.variant, v.label);
-    counts.day_variants = seed.dayVariants.length;
+    for (const v of block.variants) {
+      insertVariant.run(uuid(), userId, key, v.day, v.variant, v.label);
+    }
+    counts[`${key}: day_variants`] = block.variants.length;
 
     const supplementIds = {};
     const insertSupplement = db.prepare(
       `INSERT INTO supplements
-         (id, user_id, name, form, default_dose, ingredients, why, watch_for, notes, color, sort_order, archived,
-          every_n_days, rotation_start)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 0, ?, ?)`,
+         (id, user_id, plan, name, form, default_dose, ingredients, why, watch_for, notes, color,
+          sort_order, archived, every_n_days, rotation_start, badge)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 0, ?, ?, ?)`,
     );
-    // Rotations count from "today" in the user's own timezone.
-    const today = new Intl.DateTimeFormat('en-CA', {
-      timeZone: user.timezone || 'Asia/Riyadh',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(new Date());
-    const plusDays = (ymd, n) => {
-      const [y, m, d] = ymd.split('-').map(Number);
-      return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
-    };
-    for (const s of seed.supplements) {
+    for (const s of block.supplements) {
       const id = uuid();
       supplementIds[s.key] = id;
       insertSupplement.run(
         id,
         userId,
+        key,
         s.name,
         s.form,
         s.defaultDose,
-        s.ingredients,
-        s.why,
-        s.watchFor,
+        s.ingredients ?? null,
+        s.why ?? null,
+        s.watchFor ?? null,
         s.color,
         s.sortOrder,
         s.everyNDays ?? null,
-        s.everyNDays ? plusDays(today, s.rotationOffset ?? 0) : null,
+        s.rotationStart ?? (s.everyNDays ? plusDays(today, s.rotationOffset ?? 0) : null),
+        s.badge ?? null,
       );
     }
-    counts.supplements = seed.supplements.length;
+    counts[`${key}: supplements`] = block.supplements.length;
 
     const insertRule = db.prepare(
       `INSERT INTO schedule_rules
-         (id, user_id, supplement_id, slot_id, days, dose_override, note, variant, sort_order)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (id, user_id, supplement_id, slot_id, days, dose_override, note, variant, sort_order, starts_on)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     );
-    for (const r of seed.scheduleRules) {
+    for (const r of block.rules) {
       insertRule.run(
         uuid(),
         userId,
@@ -180,17 +249,21 @@ try {
         r.note,
         r.variant,
         r.sortOrder,
+        r.startsOn ?? null,
       );
     }
-    counts.schedule_rules = seed.scheduleRules.length;
+    counts[`${key}: schedule_rules`] = block.rules.length;
 
-    db.prepare('INSERT INTO supplement_settings (user_id, notes) VALUES (?, ?)').run(
+    db.prepare('INSERT INTO plan_settings (user_id, plan, notes) VALUES (?, ?, ?)').run(
       userId,
-      seed.supplementNotes,
+      key,
+      block.notes,
     );
-    counts.supplement_settings = 1;
+    counts[`${key}: plan_settings`] = 1;
+  };
 
-    /* ----- workouts ----- */
+  /* ----- the lifting program (schedule reference) ----- */
+  const insertProgram = () => {
     const exerciseIds = {};
     const insertExercise = db.prepare(
       `INSERT INTO exercises
@@ -266,12 +339,29 @@ try {
         counts.program_exercises++;
       }
     }
+  };
+
+  const run = db.transaction(() => {
+    if (plan === 'all') wipeAll();
+    else wipePlan(plan);
+
+    if (plan !== 'care') {
+      insertPlan('supplements', {
+        slots: seed.mealSlots,
+        variants: seed.dayVariants,
+        supplements: seed.supplements,
+        rules: seed.scheduleRules,
+        notes: seed.supplementNotes,
+      });
+    }
+    if (plan !== 'supplements') insertPlan('care', seed.care);
+    if (plan === 'all') insertProgram();
   });
   run();
 
-  console.log(`Seeded '${user.username}' (${dbPath}):`);
+  console.log(`Seeded '${user.username}' (${dbPath}, plan: ${plan}):`);
   for (const [table, count] of Object.entries(counts)) {
-    console.log(`  ${table.padEnd(20)} ${count}`);
+    console.log(`  ${table.padEnd(28)} ${count}`);
   }
 } finally {
   db.close();
