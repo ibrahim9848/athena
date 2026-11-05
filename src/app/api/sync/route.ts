@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser, slideSessionCookie } from '@/lib/auth';
 import { setTaken } from '@/server/supplements';
-import { finishWorkout, updateWorkoutSet } from '@/server/workouts';
 import type { SyncOp } from '@/lib/outbox';
 
 export const dynamic = 'force-dynamic';
@@ -32,15 +31,9 @@ export async function POST(req: Request) {
       if (op.kind === 'tick') {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(op.date)) throw new Error('Bad date');
         setTaken(user.id, op.ruleId, op.date, !!op.taken);
-      } else if (op.kind === 'set') {
-        const fields: { weightKg?: number | null; reps?: number | null; done?: boolean } = {};
-        if ('weightKg' in op) fields.weightKg = op.weightKg === null ? null : Number(op.weightKg);
-        if ('reps' in op) fields.reps = op.reps === null ? null : Math.round(Number(op.reps));
-        if ('done' in op) fields.done = !!op.done;
-        updateWorkoutSet(user.id, op.setId, fields);
-      } else if (op.kind === 'finish') {
-        finishWorkout(user.id, op.workoutId, op.notes);
       }
+      // Any other kind is the old build's workout logging ('set', 'finish'):
+      // acknowledged and dropped, so a phone's stale outbox clears.
     } catch (err) {
       errors.push(String(err));
     }

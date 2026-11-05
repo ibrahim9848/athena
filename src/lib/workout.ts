@@ -25,13 +25,6 @@ export function formatDaySummary(items: SummaryInput[]): string {
   return `${s.exercises} exercise${s.exercises === 1 ? '' : 's'} · ${s.sets} sets · about ${s.minutes} min`;
 }
 
-/** Estimated 1RM via Epley. */
-export function epley1Rm(weightKg: number, reps: number): number {
-  if (reps <= 0) return weightKg;
-  if (reps === 1) return weightKg;
-  return weightKg * (1 + reps / 30);
-}
-
 export function formatRest(restSeconds: number): string {
   const m = Math.floor(restSeconds / 60);
   const s = restSeconds % 60;

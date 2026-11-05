@@ -8,16 +8,7 @@
  * op can never be replayed after a newer contradicting one.
  */
 
-export type SyncOp =
-  | { kind: 'tick'; ruleId: string; date: string; taken: boolean }
-  | {
-      kind: 'set';
-      setId: string;
-      weightKg?: number | null;
-      reps?: number | null;
-      done?: boolean;
-    }
-  | { kind: 'finish'; workoutId: string; notes?: string };
+export type SyncOp = { kind: 'tick'; ruleId: string; date: string; taken: boolean };
 
 const DB_NAME = 'athena-outbox';
 const STORE = 'ops';

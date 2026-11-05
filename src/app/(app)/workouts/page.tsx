@@ -118,7 +118,7 @@ export default async function WorkoutsPage() {
             <ExerciseCards exercises={exercises} />
             <div>
               <Link className="btn btn-dark" href={`/workouts/day/${day.id}`}>
-                Open {day.name} · Start
+                Open {day.name}
               </Link>
             </div>
           </section>

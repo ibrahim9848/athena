@@ -6,7 +6,7 @@ import { DEFAULT_TIMEZONE, hmInTz, weekdayOfYmd, ymdInTz } from '@/lib/dates';
 import { sendPushToUser, type PushPayload } from '@/lib/push';
 import { PLANS } from '@/lib/plans';
 import { getSlotForUser, resolveDayForUser } from '@/server/supplements';
-import { autoFinishStaleWorkouts, getProgramDayForUser } from '@/server/workouts';
+import { getProgramDayForUser } from '@/server/workouts';
 import { alreadySent, recordSend } from '@/server/reminders';
 import { runBackup } from '@/server/backup';
 
@@ -25,8 +25,6 @@ function minutesOfHm(hm: string): number {
 const CATCH_UP_MINUTES = 15;
 
 async function tick(now: Date): Promise<void> {
-  autoFinishStaleWorkouts();
-
   const rows = db
     .select({ reminder: reminders, user: users })
     .from(reminders)

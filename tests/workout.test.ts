@@ -4,7 +4,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   daySummary,
-  epley1Rm,
   estimateMinutes,
   formatDaySummary,
   formatRest,
@@ -56,17 +55,6 @@ describe('formatDaySummary', () => {
     expect(formatDaySummary([{ sets: 3, restSeconds: 60 }])).toBe(
       '1 exercise · 3 sets · about 5 min',
     );
-  });
-});
-
-describe('epley1Rm', () => {
-  it('estimates 1RM via Epley for multi-rep sets', () => {
-    expect(epley1Rm(100, 10)).toBe(100 * (1 + 10 / 3e1));
-    expect(epley1Rm(100, 10)).toBeCloseTo(133.33, 1);
-  });
-
-  it('a single at 80 kg is already a 1RM', () => {
-    expect(epley1Rm(80, 1)).toBe(80);
   });
 });
 

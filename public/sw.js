@@ -1,8 +1,10 @@
 /* Athena service worker: offline shell + Web Push. Plain JS, no build step. */
 
-const VERSION = 'athena-v1';
+// Bump PAGE_CACHE when routes change: activate() deletes every cache not in
+// KEEP, so installed phones drop stale pages (v2: workout logging removed).
+const VERSION = 'athena-v2';
 const ASSET_CACHE = 'athena-assets';
-const PAGE_CACHE = 'athena-pages';
+const PAGE_CACHE = 'athena-pages-v2';
 const KEEP = [ASSET_CACHE, PAGE_CACHE];
 
 self.addEventListener('install', () => {

@@ -13,12 +13,10 @@ import { beforeAll, describe, expect, it } from 'vitest';
 type DbModule = typeof import('@/db');
 type SchemaModule = typeof import('@/db/schema');
 type SupplementsModule = typeof import('@/server/supplements');
-type WorkoutsModule = typeof import('@/server/workouts');
 
 let db: DbModule['db'];
 let schema: SchemaModule;
 let sup: SupplementsModule;
-let wk: WorkoutsModule;
 
 const A = 'user-a';
 const B = 'user-b';
@@ -36,7 +34,6 @@ beforeAll(async () => {
   ({ db } = await import('@/db'));
   schema = await import('@/db/schema');
   sup = await import('@/server/supplements');
-  wk = await import('@/server/workouts');
 
   const now = new Date().toISOString();
 
@@ -153,42 +150,3 @@ describe('supplement data isolation', () => {
   });
 });
 
-describe('workout data isolation', () => {
-  it("startWorkout(B, <A's program day>) throws and creates nothing", () => {
-    expect(() => wk.startWorkout(B, A_PROGRAM_DAY_ID, TZ)).toThrow();
-    expect(db.select().from(schema.workouts).all()).toHaveLength(0);
-    expect(db.select().from(schema.workoutSets).all()).toHaveLength(0);
-  });
-
-  it("B cannot update or finish A's workout", () => {
-    const workoutId = wk.startWorkout(A, A_PROGRAM_DAY_ID, TZ);
-
-    const aWorkout = wk.getWorkoutForUser(A, workoutId);
-    expect(aWorkout).not.toBeNull();
-    expect(aWorkout!.sets).toHaveLength(3);
-    const firstSet = aWorkout!.sets.at(0);
-    expect(firstSet).toBeDefined();
-    const someSetIdOfA = firstSet!.set.id;
-
-    expect(() => wk.updateWorkoutSet(B, someSetIdOfA, { done: true })).toThrow();
-    expect(() => wk.finishWorkout(B, workoutId)).toThrow();
-    expect(wk.getWorkoutForUser(B, workoutId)).toBeNull();
-
-    // Nothing changed for A.
-    const after = wk.getWorkoutForUser(A, workoutId);
-    expect(after).not.toBeNull();
-    expect(after!.workout.finishedAt).toBeNull();
-    expect(after!.sets.every((s) => !s.set.done)).toBe(true);
-
-    // A can still operate on their own workout.
-    wk.updateWorkoutSet(A, someSetIdOfA, { weightKg: 40, reps: 10, done: true });
-    wk.finishWorkout(A, workoutId);
-    const finished = wk.getWorkoutForUser(A, workoutId);
-    expect(finished!.workout.finishedAt).not.toBeNull();
-  });
-
-  it("listWorkoutHistory(B) is empty while A sees their session", () => {
-    expect(wk.listWorkoutHistory(B)).toEqual([]);
-    expect(wk.listWorkoutHistory(A)).toHaveLength(1);
-  });
-});
