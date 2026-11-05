@@ -3,6 +3,72 @@
  * Plain .mjs so both the Next server (via src/db/index.ts) and the
  * dependency-free scripts in scripts/ can share it.
  */
+import fs from 'node:fs';
+import os from 'node:os';
+
+/** A heartbeat older than this means the owning server is gone. */
+export const OWNER_STALE_MS = 60_000;
+
+/**
+ * SQLite's locks can't coordinate processes on different hosts sharing one
+ * file — e.g. the Docker container and a Windows process via the ./data bind
+ * mount. Their write-ahead-log writes collide and committed data is silently
+ * lost. The running server records itself in `<db>.owner` with a heartbeat;
+ * anything on another host refuses to open the database while that heartbeat
+ * is fresh. Processes on the same host (e.g. `docker exec` scripts) are fine.
+ */
+export function assertNoForeignOwner(dbPath, host = os.hostname(), now = Date.now()) {
+  if (dbPath === ':memory:') return;
+  let owner;
+  try {
+    owner = JSON.parse(fs.readFileSync(`${dbPath}.owner`, 'utf8'));
+  } catch {
+    return;
+  }
+  if (owner && owner.host !== host && now - owner.heartbeat < OWNER_STALE_MS) {
+    throw new Error(
+      `${dbPath} is in use by the Athena server on host "${owner.host}" (pid ${owner.pid}). ` +
+        'Stop it first, or run this inside that container (docker compose exec athena ...): ' +
+        'two hosts writing one SQLite file corrupts it.',
+    );
+  }
+}
+
+/** Record this process as the database owner and keep its heartbeat fresh. */
+export function claimDatabase(dbPath, host = os.hostname()) {
+  if (dbPath === ':memory:') return () => {};
+  const file = `${dbPath}.owner`;
+  const write = () =>
+    fs.writeFileSync(file, JSON.stringify({ host, pid: process.pid, heartbeat: Date.now() }));
+  write();
+  const timer = setInterval(() => {
+    try {
+      write();
+    } catch {
+      // transient write failure: the next beat retries
+    }
+  }, 20_000);
+  timer.unref();
+  const release = () => {
+    clearInterval(timer);
+    try {
+      const owner = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (owner.host === host && owner.pid === process.pid) fs.unlinkSync(file);
+    } catch {
+      // already gone
+    }
+  };
+  process.once('exit', release);
+  for (const signal of ['SIGTERM', 'SIGINT']) {
+    process.once(signal, () => {
+      release();
+      // Keep the default "terminate" behaviour unless something else handles the signal.
+      if (process.listenerCount(signal) === 0) process.exit(0);
+    });
+  }
+  return release;
+}
+
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,

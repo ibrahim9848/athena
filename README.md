@@ -30,6 +30,8 @@ npm run dev
 
 The app runs at http://localhost:3000. The database is created at `./data/app.db` on first use (override with the `DATABASE_PATH` env var).
 
+> **Don't point a host process at the Docker database.** While the container is running, `./data/app.db` belongs to it: a server or script started on Windows against the same file refuses to start (two hosts writing one SQLite file corrupts it). For local development use a separate file, e.g. `DATABASE_PATH=./data/dev.db npm run dev`, and run admin scripts against the live data with `docker compose exec athena node scripts/...`.
+
 Create a user and load the default plans:
 
 ```bash

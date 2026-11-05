@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import Database from 'better-sqlite3';
-import { applySchema } from '../src/db/ddl.mjs';
+import { applySchema, assertNoForeignOwner } from '../src/db/ddl.mjs';
 import { buildSeed } from './seed-data.mjs';
 
 const USAGE = 'Usage: npm run seed -- --user <username>';
@@ -46,6 +46,11 @@ if (!username) fail(`--user is required.\n\n${USAGE}`);
 
 const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'app.db');
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+try {
+  assertNoForeignOwner(dbPath);
+} catch (err) {
+  fail(err.message);
+}
 const db = new Database(dbPath);
 
 try {

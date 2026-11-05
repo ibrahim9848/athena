@@ -13,10 +13,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
+import { assertNoForeignOwner } from '../src/db/ddl.mjs';
 
 const KEEP = 30;
 
 const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'app.db');
+
+try {
+  assertNoForeignOwner(dbPath);
+} catch (err) {
+  console.error(`Error: ${err.message}`);
+  process.exit(1);
+}
 
 let db;
 try {

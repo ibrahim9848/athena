@@ -15,7 +15,7 @@ import crypto from 'node:crypto';
 import readline from 'node:readline';
 import Database from 'better-sqlite3';
 import argon2 from 'argon2';
-import { applySchema } from '../src/db/ddl.mjs';
+import { applySchema, assertNoForeignOwner } from '../src/db/ddl.mjs';
 
 const USAGE = `Usage: npm run create-user -- --username <name> [options]
 
@@ -148,6 +148,11 @@ if (!password) fail('Password must not be empty. Nothing was created.');
 
 const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'app.db');
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+try {
+  assertNoForeignOwner(dbPath);
+} catch (err) {
+  fail(err.message);
+}
 
 const db = new Database(dbPath);
 try {
