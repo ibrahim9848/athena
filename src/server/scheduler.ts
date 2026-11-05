@@ -4,7 +4,8 @@ import { db } from '@/db';
 import { reminders, users } from '@/db/schema';
 import { DEFAULT_TIMEZONE, hmInTz, weekdayOfYmd, ymdInTz } from '@/lib/dates';
 import { sendPushToUser, type PushPayload } from '@/lib/push';
-import { resolveDayForUser } from '@/server/supplements';
+import { PLANS } from '@/lib/plans';
+import { getSlotForUser, resolveDayForUser } from '@/server/supplements';
 import { autoFinishStaleWorkouts, getProgramDayForUser } from '@/server/workouts';
 import { alreadySent, recordSend } from '@/server/reminders';
 import { runBackup } from '@/server/backup';
@@ -44,7 +45,9 @@ async function tick(now: Date): Promise<void> {
 
     let payload: PushPayload | null = null;
     if (reminder.kind === 'slot' && reminder.refId) {
-      const resolved = resolveDayForUser(user.id, localDate);
+      const slotRow = getSlotForUser(user.id, reminder.refId);
+      if (!slotRow) continue; // slot deleted since the reminder was made
+      const resolved = resolveDayForUser(user.id, localDate, slotRow.plan);
       const slot = resolved.slots.find((s) => s.slot.id === reminder.refId);
       if (!slot) continue; // nothing scheduled in this slot today
       const remaining = slot.items.filter((i) => !i.taken);
@@ -52,7 +55,7 @@ async function tick(now: Date): Promise<void> {
       payload = {
         title: reminder.label || slot.slot.name,
         body: remaining.map((i) => `${i.supplement.name} · ${i.dose}`).join('\n'),
-        url: '/supplements',
+        url: PLANS[slotRow.plan].path,
         tag: `slot-${reminder.refId}`,
       };
     } else if (reminder.kind === 'workout' && reminder.refId) {

@@ -407,7 +407,7 @@ export async function setAlternatingAction(formData: FormData): Promise<void> {
   const a = ruleA.supplementId;
   const b = ruleB.supplementId;
 
-  const data = getPlanData(user.id);
+  const data = getPlanData(user.id, 'supplements');
   const supA = data.supplements.find((s) => s.id === a);
   const supB = data.supplements.find((s) => s.id === b);
   if (!supA || !supB || supA.archived || supB.archived) return;
@@ -462,6 +462,6 @@ export async function saveNotesAction(formData: FormData): Promise<void> {
   slideSessionCookie();
   const v = formData.get('notes');
   const notes = typeof v === 'string' ? v.replace(/\r\n/g, '\n') : '';
-  setSupplementNotes(user.id, notes);
+  setSupplementNotes(user.id, 'supplements', notes);
   revalidateSupplementPages();
 }

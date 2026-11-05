@@ -624,8 +624,8 @@ function AddRuleForm({ supplements, slots }: { supplements: Supplement[]; slots:
 
 export default async function SupplementsEditPage() {
   const user = await requireUser();
-  const { supplements, slots, rules, variants } = getPlanData(user.id);
-  const notes = getSupplementNotes(user.id);
+  const { supplements, slots, rules, variants } = getPlanData(user.id, 'supplements');
+  const notes = getSupplementNotes(user.id, 'supplements');
 
   const supplementById = new Map(supplements.map((s) => [s.id, s]));
   const slotById = new Map(slots.map((s) => [s.id, s]));

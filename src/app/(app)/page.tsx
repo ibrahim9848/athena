@@ -19,7 +19,7 @@ export default async function HomePage() {
   const gymWeekdays = [...new Set(programDays.map((d) => d.weekday))];
   const todayProgramDay = programDays.find((d) => d.weekday === weekday) ?? null;
 
-  const days = resolveWeekForUser(user.id, ymd);
+  const days = resolveWeekForUser(user.id, ymd, 'supplements');
 
   return (
     <div className="wrap grid gap-7 pb-11 pt-7">

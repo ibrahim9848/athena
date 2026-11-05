@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/auth';
 import { DAY_NAMES } from '@/lib/dates';
 import { getReminders, hasSubscription } from '@/server/reminders';
 import { getSlotsForUser } from '@/server/supplements';
+import { PLANS } from '@/lib/plans';
 import { getActiveProgram, getProgramDays } from '@/server/workouts';
 import { NotificationsCard } from '@/components/reminders/NotificationsCard';
 import {
@@ -20,7 +21,7 @@ export default async function RemindersPage() {
   const reminders = getReminders(user.id);
   const slots: ReminderOption[] = getSlotsForUser(user.id).map((slot) => ({
     id: slot.id,
-    name: slot.name,
+    name: `${PLANS[slot.plan].tabLabel} · ${slot.name}`,
   }));
   const program = getActiveProgram(user.id);
   const workoutDays: ReminderOption[] = (program ? getProgramDays(program.id) : []).map((day) => ({

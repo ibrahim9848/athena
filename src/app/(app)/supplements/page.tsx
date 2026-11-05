@@ -34,7 +34,7 @@ export default async function SupplementsPage() {
   const user = await requireUser();
   const { ymd } = todayInTz(user.timezone);
 
-  const days = resolveWeekForUser(user.id, ymd);
+  const days = resolveWeekForUser(user.id, ymd, 'supplements');
   const program = getActiveProgram(user.id);
   const gymWeekdays = program
     ? [...new Set(getProgramDays(program.id).map((d) => d.weekday))]

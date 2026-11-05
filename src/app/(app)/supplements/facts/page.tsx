@@ -73,9 +73,9 @@ function WatchLines({ text }: { text: string }) {
 
 export default async function FactsPage() {
   const user = await requireUser();
-  const facts = supplementsWithCoverage(user.id);
+  const facts = supplementsWithCoverage(user.id, 'supplements');
   const today = todayInTz(user.timezone).ymd;
-  const notes = getSupplementNotes(user.id);
+  const notes = getSupplementNotes(user.id, 'supplements');
 
   const servingSlotIds = new Set<string>();
   for (const fact of facts) {

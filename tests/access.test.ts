@@ -128,27 +128,27 @@ beforeAll(async () => {
 
 describe('supplement data isolation', () => {
   it("getPlanData(B) is empty while A sees their own plan", () => {
-    const a = sup.getPlanData(A);
+    const a = sup.getPlanData(A, 'supplements');
     expect(a.supplements).toHaveLength(1);
     expect(a.slots).toHaveLength(1);
     expect(a.rules).toHaveLength(1);
 
-    const b = sup.getPlanData(B);
+    const b = sup.getPlanData(B, 'supplements');
     expect(b.supplements).toEqual([]);
     expect(b.rules).toEqual([]);
     expect(b.slots).toEqual([]);
   });
 
   it('resolveDayForUser(B) resolves an empty plan', () => {
-    expect(sup.resolveDayForUser(B, DATE).progress.total).toBe(0);
-    expect(sup.resolveDayForUser(A, DATE).progress.total).toBe(1);
+    expect(sup.resolveDayForUser(B, DATE, 'supplements').progress.total).toBe(0);
+    expect(sup.resolveDayForUser(A, DATE, 'supplements').progress.total).toBe(1);
   });
 
   it("setTaken(B, <A's rule>) throws and inserts nothing", () => {
     expect(() => sup.setTaken(B, A_RULE_ID, DATE, true)).toThrow();
     expect(db.select().from(schema.supplementLogs).all()).toHaveLength(0);
     expect(sup.getLogsForDate(A, DATE)).toEqual([]);
-    const aDay = sup.resolveDayForUser(A, DATE);
+    const aDay = sup.resolveDayForUser(A, DATE, 'supplements');
     expect(aDay.progress.taken).toBe(0);
   });
 });

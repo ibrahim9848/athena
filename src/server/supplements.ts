@@ -3,40 +3,52 @@ import { db } from '@/db';
 import {
   dayVariants,
   mealSlots,
+  planSettings,
   scheduleRules,
   supplementLogs,
-  supplementSettings,
   supplements,
 } from '@/db/schema';
 import { addDaysYmd, todayInTz } from '@/lib/dates';
 import { resolveDay, resolveWeek, type PlanInput, type ResolvedDay } from '@/lib/plan';
+import type { PlanKey } from '@/lib/plans';
 import { newId } from '@/lib/ids';
 
-/** Everything needed to resolve any day of a user's plan. */
-export function getPlanData(userId: string) {
+/** Everything needed to resolve any day of one of a user's plans. */
+export function getPlanData(userId: string, plan: PlanKey) {
+  const planSupplements = db
+    .select()
+    .from(supplements)
+    .where(and(eq(supplements.userId, userId), eq(supplements.plan, plan)))
+    .orderBy(asc(supplements.sortOrder), asc(supplements.name))
+    .all();
+  const supplementIds = planSupplements.map((s) => s.id);
   return {
-    supplements: db
-      .select()
-      .from(supplements)
-      .where(eq(supplements.userId, userId))
-      .orderBy(asc(supplements.sortOrder), asc(supplements.name))
-      .all(),
+    supplements: planSupplements,
     slots: db
       .select()
       .from(mealSlots)
-      .where(eq(mealSlots.userId, userId))
+      .where(and(eq(mealSlots.userId, userId), eq(mealSlots.plan, plan)))
       .orderBy(asc(mealSlots.sortOrder), asc(mealSlots.name))
       .all(),
-    rules: db
-      .select()
-      .from(scheduleRules)
-      .where(eq(scheduleRules.userId, userId))
-      .orderBy(asc(scheduleRules.sortOrder))
-      .all(),
+    // A rule belongs to the plan of its supplement.
+    rules:
+      supplementIds.length === 0
+        ? []
+        : db
+            .select()
+            .from(scheduleRules)
+            .where(
+              and(
+                eq(scheduleRules.userId, userId),
+                inArray(scheduleRules.supplementId, supplementIds),
+              ),
+            )
+            .orderBy(asc(scheduleRules.sortOrder))
+            .all(),
     variants: db
       .select()
       .from(dayVariants)
-      .where(eq(dayVariants.userId, userId))
+      .where(and(eq(dayVariants.userId, userId), eq(dayVariants.plan, plan)))
       .orderBy(asc(dayVariants.day))
       .all(),
   };
@@ -64,16 +76,16 @@ export function getLogsBetween(userId: string, fromDate: string, toDate: string)
     .all();
 }
 
-export function resolveDayForUser(userId: string, date: string): ResolvedDay {
-  const data = getPlanData(userId);
+export function resolveDayForUser(userId: string, date: string, plan: PlanKey): ResolvedDay {
+  const data = getPlanData(userId, plan);
   const logs = getLogsForDate(userId, date);
   const input: PlanInput = { date, ...data, logs };
   return resolveDay(input);
 }
 
 /** The 7 days of the week containing `date` (Sunday first), logs attached per day. */
-export function resolveWeekForUser(userId: string, date: string): ResolvedDay[] {
-  const data = getPlanData(userId);
+export function resolveWeekForUser(userId: string, date: string, plan: PlanKey): ResolvedDay[] {
+  const data = getPlanData(userId, plan);
   const week = resolveWeek({ ...data, date, logs: [] });
   return week.map((day) => {
     const logs = getLogsForDate(userId, day.date);
@@ -81,9 +93,9 @@ export function resolveWeekForUser(userId: string, date: string): ResolvedDay[] 
   });
 }
 
-export function resolveTodayForUser(userId: string, timezone: string): ResolvedDay {
+export function resolveTodayForUser(userId: string, timezone: string, plan: PlanKey): ResolvedDay {
   const { ymd } = todayInTz(timezone);
-  return resolveDayForUser(userId, ymd);
+  return resolveDayForUser(userId, ymd, plan);
 }
 
 /**
@@ -114,8 +126,9 @@ export function historyRange(
   userId: string,
   fromDate: string,
   toDate: string,
+  plan: PlanKey,
 ): { date: string; taken: number; total: number }[] {
-  const data = getPlanData(userId);
+  const data = getPlanData(userId, plan);
   const logs = getLogsBetween(userId, fromDate, toDate);
   const out: { date: string; taken: number; total: number }[] = [];
   for (let d = fromDate; d <= toDate; d = addDaysYmd(d, 1)) {
@@ -129,25 +142,25 @@ export function historyRange(
   return out;
 }
 
-export function getSupplementNotes(userId: string): string | null {
+export function getSupplementNotes(userId: string, plan: PlanKey): string | null {
   const row = db
     .select()
-    .from(supplementSettings)
-    .where(eq(supplementSettings.userId, userId))
+    .from(planSettings)
+    .where(and(eq(planSettings.userId, userId), eq(planSettings.plan, plan)))
     .get();
   return row?.notes ?? null;
 }
 
-export function setSupplementNotes(userId: string, notes: string): void {
-  db.insert(supplementSettings)
-    .values({ userId, notes })
-    .onConflictDoUpdate({ target: supplementSettings.userId, set: { notes } })
+export function setSupplementNotes(userId: string, plan: PlanKey, notes: string): void {
+  db.insert(planSettings)
+    .values({ userId, plan, notes })
+    .onConflictDoUpdate({ target: [planSettings.userId, planSettings.plan], set: { notes } })
     .run();
 }
 
 /** Supplements with the weekdays each is scheduled (default variant), for the facts page. */
-export function supplementsWithCoverage(userId: string) {
-  const data = getPlanData(userId);
+export function supplementsWithCoverage(userId: string, plan: PlanKey) {
+  const data = getPlanData(userId, plan);
   return data.supplements
     .filter((s) => !s.archived)
     .map((s) => {
@@ -186,11 +199,12 @@ export function getRuleForUser(userId: string, ruleId: string) {
     .get();
 }
 
-export function getSlotsForUser(userId: string) {
+/** A user's slots — one plan's, or every plan's when `plan` is omitted (reminders). */
+export function getSlotsForUser(userId: string, plan?: PlanKey) {
   return db
     .select()
     .from(mealSlots)
-    .where(eq(mealSlots.userId, userId))
+    .where(plan ? and(eq(mealSlots.userId, userId), eq(mealSlots.plan, plan)) : eq(mealSlots.userId, userId))
     .orderBy(asc(mealSlots.sortOrder))
     .all();
 }

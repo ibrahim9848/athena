@@ -16,7 +16,7 @@ export default async function HistoryPage() {
 
   // Resolve all 56 days once, server-side, so the client gets taken/total
   // plus the names and doses of everything missed per day.
-  const data = getPlanData(user.id);
+  const data = getPlanData(user.id, 'supplements');
   const logs = getLogsBetween(user.id, from, to);
   const days: HistoryDay[] = [];
   for (let date = from; date <= to; date = addDaysYmd(date, 1)) {

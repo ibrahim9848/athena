@@ -105,13 +105,6 @@ export const planSettings = sqliteTable(
   (t) => ({ pk: primaryKey({ columns: [t.userId, t.plan] }) }),
 );
 
-export const supplementSettings = sqliteTable('supplement_settings', {
-  userId: text('user_id')
-    .primaryKey()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  notes: text('notes'),
-});
-
 export type Supplement = typeof supplements.$inferSelect;
 export type MealSlot = typeof mealSlots.$inferSelect;
 export type ScheduleRule = typeof scheduleRules.$inferSelect;
