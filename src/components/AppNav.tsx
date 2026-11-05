@@ -39,6 +39,16 @@ const ITEMS = [
     ),
   },
   {
+    href: '/care',
+    label: 'Care',
+    match: (p: string) => p.startsWith('/care'),
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3.5c3.2 4 5.5 7.2 5.5 10a5.5 5.5 0 0 1-11 0c0-2.8 2.3-6 5.5-10Z" />
+      </svg>
+    ),
+  },
+  {
     href: '/settings',
     label: 'Settings',
     match: (p: string) => p.startsWith('/settings') || p.startsWith('/admin'),

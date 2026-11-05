@@ -128,3 +128,14 @@ export function formatSeconds(total: number): string {
   const s = total % 60;
   return `${m}:${String(s).padStart(2, '0')}`;
 }
+
+/**
+ * Where a history window of `span` days ending today starts: never before the
+ * plan's first tick, so days before a routine existed are not shown as missed.
+ * With no ticks at all the window is just today.
+ */
+export function historyStart(todayYmd: string, firstLogYmd: string | null, span: number): string {
+  if (!firstLogYmd) return todayYmd;
+  const windowStart = addDaysYmd(todayYmd, -(span - 1));
+  return firstLogYmd > windowStart ? firstLogYmd : windowStart;
+}

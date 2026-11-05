@@ -87,3 +87,11 @@ describe('plan-scoped queries', () => {
     expect(sup.getSupplementNotes('u1', 'supplements')).toBeNull();
   });
 });
+
+describe('first log date', () => {
+  it('firstLogDate is per plan', () => {
+    sup.setTaken('u1', 'r2', '2026-11-09', true);
+    expect(sup.firstLogDate('u1', 'care')).toBe('2026-11-09');
+    expect(sup.firstLogDate('u1', 'supplements')).toBeNull();
+  });
+});

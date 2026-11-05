@@ -217,4 +217,18 @@ export function getSlotForUser(userId: string, slotId: string) {
     .get();
 }
 
+/** Earliest date with a tick for any of the plan's rules, or null when none yet. */
+export function firstLogDate(userId: string, plan: PlanKey): string | null {
+  const ruleIds = getPlanData(userId, plan).rules.map((r) => r.id);
+  if (ruleIds.length === 0) return null;
+  const row = db
+    .select({ date: supplementLogs.date })
+    .from(supplementLogs)
+    .where(and(eq(supplementLogs.userId, userId), inArray(supplementLogs.ruleId, ruleIds)))
+    .orderBy(asc(supplementLogs.date))
+    .limit(1)
+    .get();
+  return row?.date ?? null;
+}
+
 export { inArray };

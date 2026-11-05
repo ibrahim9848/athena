@@ -20,6 +20,7 @@ export default async function HomePage() {
   const todayProgramDay = programDays.find((d) => d.weekday === weekday) ?? null;
 
   const days = resolveWeekForUser(user.id, ymd, 'supplements');
+  const careDays = resolveWeekForUser(user.id, ymd, 'care');
 
   return (
     <div className="wrap grid gap-7 pb-11 pt-7">
@@ -48,6 +49,16 @@ export default async function HomePage() {
         timezone={user.timezone}
         gymWeekdays={gymWeekdays}
         mode="today"
+        plan="supplements"
+      />
+
+      <SupplementsView
+        days={careDays}
+        todayYmd={ymd}
+        timezone={user.timezone}
+        gymWeekdays={[]}
+        mode="today"
+        plan="care"
       />
 
       <p className="disclaimer">

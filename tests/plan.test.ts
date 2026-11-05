@@ -21,7 +21,7 @@ import {
   type PlanVariant,
   type ResolvedDay,
 } from '@/lib/plan';
-import { addDaysYmd, hmInTz, todayInTz, weekdayOfYmd } from '@/lib/dates';
+import { addDaysYmd, historyStart, hmInTz, todayInTz, weekdayOfYmd } from '@/lib/dates';
 
 const SUNDAY = '2026-03-01';
 const MONDAY = '2026-03-02';
@@ -592,5 +592,17 @@ describe('doseCount for care steps', () => {
     ]) {
       expect(doseCount(dose)).toBe(1);
     }
+  });
+});
+
+describe('historyStart', () => {
+  it('starts today when the plan has no ticks yet', () => {
+    expect(historyStart('2026-11-20', null, 56)).toBe('2026-11-20');
+  });
+  it('starts at the first tick when it is inside the window', () => {
+    expect(historyStart('2026-11-20', '2026-11-08', 56)).toBe('2026-11-08');
+  });
+  it('keeps the full window when ticks go back further', () => {
+    expect(historyStart('2026-11-20', '2026-01-01', 56)).toBe('2026-09-26');
   });
 });

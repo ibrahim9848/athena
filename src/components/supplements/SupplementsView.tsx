@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { CSSProperties } from 'react';
 import type { PlanSupplement, ResolvedDay, ResolvedItem } from '@/lib/plan';
+import { PLANS, type PlanKey } from '@/lib/plans';
 import { DAY_NAMES, DAY_TINY, formatYmd, weekdayOfYmd } from '@/lib/dates';
 import { sendOps } from '@/lib/outbox';
 import { PillGlyph } from '@/components/PillGlyph';
@@ -17,6 +19,8 @@ export type SupplementsViewProps = {
   gymWeekdays: number[];
   /** "full" = 7-day box + day switching; "today" = today's plan panel only. */
   mode: 'full' | 'today';
+  /** Which plan is shown; picks the copy (tick word, panel heading, link). */
+  plan: PlanKey;
 };
 
 /** Client-side copy of todayInTz: YYYY-MM-DD right now in the given timezone. */
@@ -77,7 +81,15 @@ function ItemText({ item }: { item: ResolvedItem }) {
   );
 }
 
-export function SupplementsView({ days, todayYmd, timezone, gymWeekdays, mode }: SupplementsViewProps) {
+export function SupplementsView({
+  days,
+  todayYmd,
+  timezone,
+  gymWeekdays,
+  mode,
+  plan,
+}: SupplementsViewProps) {
+  const copy = PLANS[plan];
   const router = useRouter();
   const todayWeekday = weekdayOfYmd(todayYmd);
 
@@ -157,8 +169,8 @@ export function SupplementsView({ days, todayYmd, timezone, gymWeekdays, mode }:
     todayItems.length === 0
       ? 'Nothing scheduled today'
       : takenCount === todayItems.length
-        ? `All ${todayItems.length} taken today`
-        : `${takenCount} of ${todayItems.length} taken`;
+        ? `All ${todayItems.length} ${copy.tickWord} today`
+        : `${takenCount} of ${todayItems.length} ${copy.tickWord}`;
 
   const box =
     mode === 'full' ? (
@@ -223,7 +235,16 @@ export function SupplementsView({ days, todayYmd, timezone, gymWeekdays, mode }:
       <section className="plan" aria-labelledby="plan-title">
         <div className="plan-head">
           <div className="plan-title-wrap">
-            <p className="eyebrow">{isTodaySelected ? 'Today' : 'Plan for'}</p>
+            <p className="eyebrow">
+              {mode === 'today' ? (
+                // Two plans share the Today page, so each panel names its plan and links to it.
+                <Link href={copy.path}>{copy.name}</Link>
+              ) : isTodaySelected ? (
+                'Today'
+              ) : (
+                'Plan for'
+              )}
+            </p>
             <h2 id="plan-title">
               {isTodaySelected ? formatYmd(todayYmd) : DAY_NAMES[effective]}
             </h2>
