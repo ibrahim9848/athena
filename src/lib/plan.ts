@@ -25,6 +25,8 @@ export type PlanSupplement = {
   everyNDays?: number | null;
   /** YYYY-MM-DD the rotation counts from. */
   rotationStart?: string | null;
+  /** Explicit day badge ("Wash night"). When any item of a plan has one, only badges label days. */
+  badge?: string | null;
 };
 
 export type PlanSlot = {
@@ -45,6 +47,8 @@ export type PlanRule = {
   note: string | null;
   variant: string | null;
   sortOrder: number;
+  /** YYYY-MM-DD from which the rule applies; null = always. */
+  startsOn?: string | null;
 };
 
 export type PlanVariant = {
@@ -90,7 +94,10 @@ export type ResolvedSlot = {
 export type ResolvedDay = {
   date: string;
   weekday: number;
-  /** e.g. "Multivitamin day" — the first partial-week supplement scheduled today. */
+  /**
+   * e.g. "Multivitamin day" — the first partial-week supplement scheduled
+   * today; or, when the plan uses explicit badges, the first scheduled badge.
+   */
   dayLabel: string | null;
   /** Supplement backing dayLabel, for the badge glyph. */
   dayLabelSupplement: PlanSupplement | null;
@@ -196,6 +203,11 @@ export function resolveDay(input: PlanInput): ResolvedDay {
   const active = input.rules.filter((rule) => {
     if (!ruleMatchesVariant(rule.variant, dayVariant?.variant ?? null)) return false;
     if (!rule.days.includes(weekday)) return false;
+    if (rule.startsOn && input.date < rule.startsOn) {
+      // Not in force yet; a tick logged for this date still shows.
+      const log = latest.get(rule.id);
+      if (!log || log.undone) return false;
+    }
     const supplement = supplementById.get(rule.supplementId);
     if (!supplement || supplement.archived) return false;
     if (isRotating(supplement) && input.date < supplement.rotationStart!) {
@@ -261,17 +273,27 @@ export function resolveDay(input: PlanInput): ResolvedDay {
     rule.days.forEach((d) => set.add(d));
     coverage.set(rule.supplementId, set);
   }
-  const partial = items
+  const scheduled = items
     .map((i) => i.supplement)
     .filter((s, idx, arr) => arr.findIndex((x) => x.id === s.id) === idx)
-    .filter((s) => isRotating(s) || (coverage.get(s.id)?.size ?? 7) < 7)
     .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
-  const dayLabelSupplement = partial[0] ?? null;
+  // A plan with explicit badges ("Wash night") is labelled by badges alone;
+  // otherwise fall back to the derived "<name> day".
+  let dayLabelSupplement: PlanSupplement | null;
+  let dayLabel: string | null;
+  if (input.supplements.some((s) => !!s.badge)) {
+    dayLabelSupplement = scheduled.find((s) => !!s.badge) ?? null;
+    dayLabel = dayLabelSupplement?.badge ?? null;
+  } else {
+    dayLabelSupplement =
+      scheduled.find((s) => isRotating(s) || (coverage.get(s.id)?.size ?? 7) < 7) ?? null;
+    dayLabel = dayLabelSupplement ? `${dayLabelSupplement.name} day` : null;
+  }
 
   return {
     date: input.date,
     weekday,
-    dayLabel: dayLabelSupplement ? `${dayLabelSupplement.name} day` : null,
+    dayLabel,
     dayLabelSupplement,
     variantLabel: dayVariant?.label ?? null,
     variant: dayVariant?.variant ?? null,

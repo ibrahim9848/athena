@@ -502,3 +502,82 @@ describe('canAlternate', () => {
     expect(canAlternate(rulesOf('multi'), [])).toBe(false);
   });
 });
+
+describe('rule start dates', () => {
+  const am = slot('s1', 'am', 'Morning', 0);
+  const ada = sup('x', 'Adapalene', 'other', 'pea-sized', 0);
+  const base = {
+    supplements: [ada],
+    slots: [am],
+    rules: [{ ...rule('r1', 'x', 's1', ALL_DAYS), startsOn: THURSDAY }],
+    variants: [] as PlanVariant[],
+  };
+  const log = (undone: boolean): PlanLog => ({
+    ruleId: 'r1',
+    date: MONDAY,
+    takenAt: `${MONDAY}T08:00:00Z`,
+    undone,
+  });
+
+  it('hides the rule before its start date', () => {
+    expect(resolveDay({ ...base, date: MONDAY, logs: [] }).slots).toEqual([]);
+  });
+
+  it('shows it on and after the start date', () => {
+    expect(resolveDay({ ...base, date: THURSDAY, logs: [] }).progress).toEqual({ taken: 0, total: 1 });
+    expect(resolveDay({ ...base, date: FRIDAY, logs: [] }).progress).toEqual({ taken: 0, total: 1 });
+  });
+
+  it('still shows a tick logged before the start date, but not an undone one', () => {
+    expect(resolveDay({ ...base, date: MONDAY, logs: [log(false)] }).progress).toEqual({ taken: 1, total: 1 });
+    expect(resolveDay({ ...base, date: MONDAY, logs: [log(true)] }).slots).toEqual([]);
+  });
+
+  it('rotation and start date combine', () => {
+    const roller = { ...sup('roll', 'Face roller', 'tool', 'roll', 0), everyNDays: 2, rotationStart: SUNDAY };
+    const input = {
+      supplements: [roller],
+      slots: [am],
+      rules: [{ ...rule('rr', 'roll', 's1', ALL_DAYS), startsOn: THURSDAY }],
+      variants: [] as PlanVariant[],
+      logs: [] as PlanLog[],
+    };
+    expect(resolveDay({ ...input, date: '2026-03-03' }).slots).toEqual([]); // Tuesday: rotation day, not started
+    expect(resolveDay({ ...input, date: THURSDAY }).progress.total).toBe(1); // rotation day, started
+    expect(resolveDay({ ...input, date: FRIDAY }).slots).toEqual([]); // started, not a rotation day
+  });
+});
+
+describe('explicit day badges', () => {
+  const am = slot('s1', 'am', 'Morning', 0);
+  const plain = sup('a', 'Minoxidil', 'drop', 'foam', 0); // partial week, no badge
+  const wash = { ...sup('b', 'Ketoconazole shampoo', 'bottle', '3–5 min', 1), badge: 'Wash night' };
+  const roller = { ...sup('c', 'Face roller', 'tool', 'roll', 2), badge: 'Roller night' };
+  const stamp = { ...sup('d', 'Derma stamp', 'tool', 'stamp', 3), badge: 'Stamp night' };
+  const input = {
+    supplements: [plain, wash, roller, stamp],
+    slots: [am],
+    variants: [] as PlanVariant[],
+    logs: [] as PlanLog[],
+    rules: [
+      rule('ra', 'a', 's1', [1, 3, 5]),
+      rule('rb', 'b', 's1', [1, 3, 5]),
+      rule('rc', 'c', 's1', [6]),
+      rule('rd', 'd', 's1', [6]),
+    ],
+  };
+
+  it('uses the first scheduled badge by item order and ignores unbadged partial-week items', () => {
+    const monday = resolveDay({ ...input, date: MONDAY });
+    expect(monday.dayLabel).toBe('Wash night');
+    expect(monday.dayLabelSupplement?.id).toBe('b');
+  });
+
+  it('lower item order wins when two badges are scheduled', () => {
+    expect(resolveDay({ ...input, date: '2026-03-07' }).dayLabel).toBe('Roller night');
+  });
+
+  it('has no label on a day without badge items', () => {
+    expect(resolveDay({ ...input, date: SUNDAY }).dayLabel).toBeNull();
+  });
+});
