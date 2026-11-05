@@ -6,7 +6,17 @@
 export type PlanSupplement = {
   id: string;
   name: string;
-  form: 'tablet' | 'capsule' | 'softgel' | 'chewable' | 'scoop' | 'other';
+  form:
+    | 'tablet'
+    | 'capsule'
+    | 'softgel'
+    | 'chewable'
+    | 'scoop'
+    | 'other'
+    | 'drop'
+    | 'tube'
+    | 'bottle'
+    | 'tool';
   defaultDose: string;
   color: string;
   sortOrder: number;

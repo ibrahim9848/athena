@@ -102,7 +102,9 @@ CREATE TABLE IF NOT EXISTS supplements (
   sort_order INTEGER NOT NULL DEFAULT 0,
   archived INTEGER NOT NULL DEFAULT 0,
   every_n_days INTEGER,
-  rotation_start TEXT
+  rotation_start TEXT,
+  plan TEXT NOT NULL DEFAULT 'supplements',
+  badge TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_supplements_user ON supplements(user_id);
 
@@ -113,7 +115,8 @@ CREATE TABLE IF NOT EXISTS meal_slots (
   name TEXT NOT NULL,
   subtitle TEXT,
   default_time TEXT,
-  sort_order INTEGER NOT NULL DEFAULT 0
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  plan TEXT NOT NULL DEFAULT 'supplements'
 );
 CREATE INDEX IF NOT EXISTS idx_meal_slots_user ON meal_slots(user_id);
 
@@ -126,7 +129,8 @@ CREATE TABLE IF NOT EXISTS schedule_rules (
   dose_override TEXT,
   note TEXT,
   variant TEXT,
-  sort_order INTEGER NOT NULL DEFAULT 0
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  starts_on TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_schedule_rules_user ON schedule_rules(user_id);
 
@@ -135,7 +139,8 @@ CREATE TABLE IF NOT EXISTS day_variants (
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   day INTEGER NOT NULL,
   variant TEXT NOT NULL,
-  label TEXT NOT NULL
+  label TEXT NOT NULL,
+  plan TEXT NOT NULL DEFAULT 'supplements'
 );
 CREATE INDEX IF NOT EXISTS idx_day_variants_user ON day_variants(user_id);
 
@@ -152,6 +157,15 @@ CREATE INDEX IF NOT EXISTS idx_supplement_logs_user_date ON supplement_logs(user
 CREATE TABLE IF NOT EXISTS supplement_settings (
   user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   notes TEXT
+);
+
+-- Free-text notes per plan ('supplements', 'care'); supersedes supplement_settings,
+-- whose rows are copied in once by applySchema.
+CREATE TABLE IF NOT EXISTS plan_settings (
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  plan TEXT NOT NULL,
+  notes TEXT,
+  PRIMARY KEY (user_id, plan)
 );
 
 CREATE TABLE IF NOT EXISTS exercises (
@@ -276,6 +290,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_reminder_sends_once ON reminder_sends(remi
 const ADDED_COLUMNS = [
   ['supplements', 'every_n_days', 'INTEGER'],
   ['supplements', 'rotation_start', 'TEXT'],
+  ['supplements', 'plan', "TEXT NOT NULL DEFAULT 'supplements'"],
+  ['supplements', 'badge', 'TEXT'],
+  ['meal_slots', 'plan', "TEXT NOT NULL DEFAULT 'supplements'"],
+  ['day_variants', 'plan', "TEXT NOT NULL DEFAULT 'supplements'"],
+  ['schedule_rules', 'starts_on', 'TEXT'],
 ];
 
 /** Apply the schema to a better-sqlite3 Database instance. */
@@ -289,4 +308,10 @@ export function applySchema(sqlite) {
       sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
     }
   }
+  // Notes used to live in supplement_settings (one row per user); carry them
+  // over as the supplements plan's notes. OR IGNORE keeps this idempotent.
+  sqlite.exec(
+    `INSERT OR IGNORE INTO plan_settings (user_id, plan, notes)
+     SELECT user_id, 'supplements', notes FROM supplement_settings`,
+  );
 }

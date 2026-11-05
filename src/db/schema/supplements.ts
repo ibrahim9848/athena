@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
 import { users } from './auth';
 
 export const supplements = sqliteTable('supplements', {
@@ -8,7 +8,7 @@ export const supplements = sqliteTable('supplements', {
     .references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   form: text('form', {
-    enum: ['tablet', 'capsule', 'softgel', 'chewable', 'scoop', 'other'],
+    enum: ['tablet', 'capsule', 'softgel', 'chewable', 'scoop', 'other', 'drop', 'tube', 'bottle', 'tool'],
   })
     .notNull()
     .default('tablet'),
@@ -24,6 +24,10 @@ export const supplements = sqliteTable('supplements', {
   // continuously across weeks. NULL or 1 = no rotation, rules' weekdays only.
   everyNDays: integer('every_n_days'),
   rotationStart: text('rotation_start'),
+  // Which plan the item belongs to; every query filters on it.
+  plan: text('plan', { enum: ['supplements', 'care'] }).notNull().default('supplements'),
+  // Explicit day badge ("Wash night"); overrides the derived "<name> day" label.
+  badge: text('badge'),
 });
 
 export const mealSlots = sqliteTable('meal_slots', {
@@ -35,6 +39,7 @@ export const mealSlots = sqliteTable('meal_slots', {
   name: text('name').notNull(),
   subtitle: text('subtitle'),
   defaultTime: text('default_time'),
+  plan: text('plan', { enum: ['supplements', 'care'] }).notNull().default('supplements'),
   sortOrder: integer('sort_order').notNull().default(0),
 });
 
@@ -56,6 +61,8 @@ export const scheduleRules = sqliteTable('schedule_rules', {
   // null/'default' = default variant; otherwise a variant key like 'two_meal'
   variant: text('variant'),
   sortOrder: integer('sort_order').notNull().default(0),
+  // YYYY-MM-DD from which the rule applies; null = always.
+  startsOn: text('starts_on'),
 });
 
 export const dayVariants = sqliteTable('day_variants', {
@@ -66,6 +73,7 @@ export const dayVariants = sqliteTable('day_variants', {
   day: integer('day').notNull(),
   variant: text('variant').notNull(),
   label: text('label').notNull(),
+  plan: text('plan', { enum: ['supplements', 'care'] }).notNull().default('supplements'),
 });
 
 export const supplementLogs = sqliteTable('supplement_logs', {
@@ -84,6 +92,19 @@ export const supplementLogs = sqliteTable('supplement_logs', {
 
 // One row per user: free-text/markdown notes shown on the facts page
 // (the "Daily amounts from pills" table, footnotes and disclaimer).
+/** Free-text notes per plan (markdown); supersedes supplement_settings. */
+export const planSettings = sqliteTable(
+  'plan_settings',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    plan: text('plan', { enum: ['supplements', 'care'] }).notNull(),
+    notes: text('notes'),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.userId, t.plan] }) }),
+);
+
 export const supplementSettings = sqliteTable('supplement_settings', {
   userId: text('user_id')
     .primaryKey()
