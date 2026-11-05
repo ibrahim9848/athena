@@ -23,7 +23,18 @@ import {
 export const metadata: Metadata = { title: 'Edit supplement plan' };
 export const dynamic = 'force-dynamic';
 
-const SUPPLEMENT_FORMS = ['tablet', 'capsule', 'softgel', 'chewable', 'scoop', 'other'] as const;
+const SUPPLEMENT_FORMS = [
+  'tablet',
+  'capsule',
+  'softgel',
+  'chewable',
+  'scoop',
+  'other',
+  'drop',
+  'tube',
+  'bottle',
+  'tool',
+] as const;
 
 /* ---------- shared inline layout styles ---------- */
 
@@ -186,6 +197,10 @@ function SupplementCard({ supplement: s }: { supplement: Supplement }) {
             defaultValue={s.rotationStart ?? ''}
           />
         </label>
+        <label className="field">
+          <span>Badge</span>
+          <input className="input" name="badge" defaultValue={s.badge ?? ''} placeholder="Wash night" />
+        </label>
       </div>
       <p className="muted" style={{ fontSize: 13 }}>
         1 = every day its rules allow. 2 = every other day, counted from the start date and
@@ -238,6 +253,7 @@ function SupplementCard({ supplement: s }: { supplement: Supplement }) {
 function AddSupplementForm() {
   return (
     <form action={upsertSupplementAction} className="card" style={cardPad}>
+      <input type="hidden" name="plan" value="supplements" />
       <p className="label">Add supplement</p>
       <div style={fieldGrid}>
         <label className="field">
@@ -319,6 +335,7 @@ function SlotRow({ slot }: { slot: MealSlot }) {
 function AddSlotForm() {
   return (
     <form action={upsertSlotAction} className="card" style={cardPad}>
+      <input type="hidden" name="plan" value="supplements" />
       <p className="label">Add meal slot</p>
       <div style={fieldGrid}>
         <label className="field">
@@ -406,6 +423,7 @@ function VariantRow({ variant: v }: { variant: DayVariant }) {
 function AddVariantForm() {
   return (
     <form action={upsertVariantAction} className="card" style={cardPad}>
+      <input type="hidden" name="plan" value="supplements" />
       <p className="label">Add day variant</p>
       <div style={fieldGrid}>
         <label className="field">
@@ -500,6 +518,10 @@ function RuleCard({
           <label className="field">
             <span>Note</span>
             <input className="input" name="note" defaultValue={rule.note ?? ''} />
+          </label>
+          <label className="field">
+            <span>Starts on</span>
+            <input type="date" className="input" name="startsOn" defaultValue={rule.startsOn ?? ''} />
           </label>
           <label className="field">
             <span>Variant</span>
@@ -607,9 +629,14 @@ function AddRuleForm({ supplements, slots }: { supplements: Supplement[]; slots:
             ))}
           </select>
         </label>
+        <label className="field">
+          <span>Starts on</span>
+          <input type="date" className="input" name="startsOn" />
+        </label>
       </div>
       <p className="muted" style={{ fontSize: 13 }}>
-        A new rule starts on every day of the week — edit its days after adding.
+        A new rule starts on every day of the week — edit its days after adding. Leave the start
+        date empty unless the rule should only kick in from a given day.
       </p>
       <div style={btnRow}>
         <button type="submit" className="btn btn-dark btn-sm">
@@ -790,6 +817,7 @@ export default async function SupplementsEditPage() {
           </p>
         </div>
         <form action={saveNotesAction} className="card" style={cardPad}>
+        <input type="hidden" name="plan" value="supplements" />
           <label className="field">
             <span>Notes (Markdown)</span>
             <textarea

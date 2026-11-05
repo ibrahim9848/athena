@@ -8,9 +8,21 @@ import { requireUser, slideSessionCookie } from '@/lib/auth';
 import { addDaysYmd, todayInTz } from '@/lib/dates';
 import { newId } from '@/lib/ids';
 import { canAlternate, resolveDay } from '@/lib/plan';
+import { PLAN_KEYS, isPlanKey, type PlanKey } from '@/lib/plans';
 import { getLogsForDate, getPlanData, setSupplementNotes } from '@/server/supplements';
 
-const SUPPLEMENT_FORMS = ['tablet', 'capsule', 'softgel', 'chewable', 'scoop', 'other'] as const;
+const SUPPLEMENT_FORMS = [
+  'tablet',
+  'capsule',
+  'softgel',
+  'chewable',
+  'scoop',
+  'other',
+  'drop',
+  'tube',
+  'bottle',
+  'tool',
+] as const;
 type SupplementForm = (typeof SUPPLEMENT_FORMS)[number];
 
 /* ---------- form parsing helpers ---------- */
@@ -79,6 +91,17 @@ function parseRotation(
   return { everyNDays: n, rotationStart: valid ? start : todayInTz(timezone).ymd };
 }
 
+/** A YYYY-MM-DD field, or null when empty or impossible (2026-02-31). */
+function parseYmd(v: string | null): string | null {
+  return v && /^\d{4}-\d{2}-\d{2}$/.test(v) && addDaysYmd(v, 0) === v ? v : null;
+}
+
+/** The plan a new row belongs to (hidden field on the add forms). */
+function parsePlan(fd: FormData): PlanKey {
+  const v = fd.get('plan');
+  return isPlanKey(v) ? v : 'supplements';
+}
+
 /** '', 'default' (any case) and null all mean the default variant. */
 function normalizeVariant(v: string | null): string | null {
   if (v == null) return null;
@@ -129,10 +152,13 @@ function nextSortOrder(rows: { sortOrder: number }[]): number {
 }
 
 function revalidateSupplementPages(): void {
-  revalidatePath('/supplements');
-  revalidatePath('/supplements/edit');
-  revalidatePath('/supplements/facts');
-  revalidatePath('/supplements/history');
+  for (const key of PLAN_KEYS) {
+    const path = key === 'supplements' ? '/supplements' : '/care';
+    revalidatePath(path);
+    revalidatePath(`${path}/edit`);
+    revalidatePath(`${path}/facts`);
+    revalidatePath(`${path}/history`);
+  }
   revalidatePath('/');
 }
 
@@ -151,6 +177,7 @@ export async function upsertSupplementAction(formData: FormData): Promise<void> 
     why: optText(formData, 'why'),
     watchFor: optText(formData, 'watchFor'),
     notes: optText(formData, 'notes'),
+    badge: optStr(formData, 'badge'),
   };
   if (id) {
     const existing = getSupplement(user.id, id);
@@ -178,6 +205,7 @@ export async function upsertSupplementAction(formData: FormData): Promise<void> 
       .values({
         id: newId(),
         userId: user.id,
+        plan: parsePlan(formData),
         name,
         form,
         defaultDose,
@@ -240,6 +268,7 @@ export async function upsertSlotAction(formData: FormData): Promise<void> {
       .values({
         id: newId(),
         userId: user.id,
+        plan: parsePlan(formData),
         key,
         name,
         subtitle,
@@ -276,16 +305,19 @@ export async function upsertVariantAction(formData: FormData): Promise<void> {
   const variant = normalizeVariant(str(formData, 'variant'));
   if (!variant) return;
   const label = str(formData, 'label') || variant;
-  // One variant per weekday: resolution would otherwise be ambiguous, so an
-  // insert (or a move onto an occupied day) replaces that day's existing row.
+  const existing = id ? getVariantRow(user.id, id) : undefined;
+  if (id && !existing) return;
+  const plan = existing?.plan ?? parsePlan(formData);
+  // One variant per weekday per plan: resolution would otherwise be ambiguous,
+  // so an insert (or a move onto an occupied day) replaces that day's row.
   const occupying = db
     .select()
     .from(dayVariants)
-    .where(and(eq(dayVariants.userId, user.id), eq(dayVariants.day, day)))
+    .where(
+      and(eq(dayVariants.userId, user.id), eq(dayVariants.plan, plan), eq(dayVariants.day, day)),
+    )
     .get();
   if (id) {
-    const existing = getVariantRow(user.id, id);
-    if (!existing) return;
     if (occupying && occupying.id !== id) {
       db.delete(dayVariants).where(eq(dayVariants.id, occupying.id)).run();
     }
@@ -296,7 +328,9 @@ export async function upsertVariantAction(formData: FormData): Promise<void> {
   } else if (occupying) {
     db.update(dayVariants).set({ variant, label }).where(eq(dayVariants.id, occupying.id)).run();
   } else {
-    db.insert(dayVariants).values({ id: newId(), userId: user.id, day, variant, label }).run();
+    db.insert(dayVariants)
+      .values({ id: newId(), userId: user.id, plan, day, variant, label })
+      .run();
   }
   revalidateSupplementPages();
 }
@@ -323,13 +357,18 @@ export async function upsertRuleAction(formData: FormData): Promise<void> {
   const supplementId = str(formData, 'supplementId');
   const slotId = str(formData, 'slotId');
   if (!supplementId || !slotId) return;
-  // Both referenced rows must belong to this user.
-  if (!getSupplement(user.id, supplementId)) return;
-  if (!getSlot(user.id, slotId)) return;
+  // Both referenced rows must belong to this user, and to the same plan.
+  const supplement = getSupplement(user.id, supplementId);
+  const slot = getSlot(user.id, slotId);
+  if (!supplement || !slot) return;
+  if (supplement.plan !== slot.plan) {
+    throw new Error('Supplement and slot belong to different plans');
+  }
   const days = parseDays(formData);
   const doseOverride = optStr(formData, 'doseOverride');
   const note = optStr(formData, 'note');
   const variant = normalizeVariant(optStr(formData, 'variant'));
+  const startsOn = parseYmd(optStr(formData, 'startsOn'));
   if (id) {
     const existing = getRule(user.id, id);
     if (!existing) return;
@@ -343,6 +382,7 @@ export async function upsertRuleAction(formData: FormData): Promise<void> {
         doseOverride,
         note,
         variant,
+        startsOn,
         sortOrder: intOr(formData, 'sortOrder', existing.sortOrder),
       })
       .where(and(eq(scheduleRules.id, id), eq(scheduleRules.userId, user.id)))
@@ -364,6 +404,7 @@ export async function upsertRuleAction(formData: FormData): Promise<void> {
         doseOverride,
         note,
         variant,
+        startsOn,
         sortOrder: nextSortOrder(rows),
       })
       .run();
@@ -406,8 +447,11 @@ export async function setAlternatingAction(formData: FormData): Promise<void> {
   if (!ruleA || !ruleB || ruleA.supplementId === ruleB.supplementId) return;
   const a = ruleA.supplementId;
   const b = ruleB.supplementId;
+  const rowA = getSupplement(user.id, a);
+  const rowB = getSupplement(user.id, b);
+  if (!rowA || !rowB || rowA.plan !== rowB.plan) return;
 
-  const data = getPlanData(user.id, 'supplements');
+  const data = getPlanData(user.id, rowA.plan);
   const supA = data.supplements.find((s) => s.id === a);
   const supB = data.supplements.find((s) => s.id === b);
   if (!supA || !supB || supA.archived || supB.archived) return;
@@ -462,6 +506,6 @@ export async function saveNotesAction(formData: FormData): Promise<void> {
   slideSessionCookie();
   const v = formData.get('notes');
   const notes = typeof v === 'string' ? v.replace(/\r\n/g, '\n') : '';
-  setSupplementNotes(user.id, 'supplements', notes);
+  setSupplementNotes(user.id, parsePlan(formData), notes);
   revalidateSupplementPages();
 }

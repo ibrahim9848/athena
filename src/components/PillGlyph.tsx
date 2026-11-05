@@ -7,6 +7,11 @@ const FORM_CLASS: Record<string, string> = {
   capsule: 'capsule',
   scoop: 'scoop',
   other: 'round',
+  // care products
+  drop: 'drop',
+  tube: 'tube',
+  bottle: 'bottle',
+  tool: 'tool',
 };
 
 /** The reference pages' pill shapes, colour-driven via the --c custom property. */

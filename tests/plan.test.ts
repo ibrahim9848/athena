@@ -581,3 +581,16 @@ describe('explicit day badges', () => {
     expect(resolveDay({ ...input, date: SUNDAY }).dayLabel).toBeNull();
   });
 });
+
+describe('doseCount for care steps', () => {
+  it('care steps with prose amounts draw one glyph', () => {
+    for (const dose of [
+      '4–5 presses per spot on thinning areas',
+      '4 minutes',
+      'two finger-lengths, face and neck',
+      'a few drops',
+    ]) {
+      expect(doseCount(dose)).toBe(1);
+    }
+  });
+});

@@ -862,6 +862,83 @@ button {
   background: var(--c);
   border-radius: 2px;
 }
+/* care products: drop (serum, oil, foam), tube (gel, cream), bottle (cleanser,
+   shampoo), tool (stamp, roller) — same CSS-only style as the pills */
+.pill.drop {
+  width: 11px;
+  height: 11px;
+  margin: 2px 1px 1px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--c);
+}
+.pill.tube {
+  width: 10px;
+  height: 22px;
+  position: relative;
+  border-radius: 2px 2px 5px 5px;
+  background: var(--c);
+}
+.pill.tube::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 0;
+  width: 6px;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--cap);
+}
+.pill.bottle {
+  width: 12px;
+  height: 22px;
+  position: relative;
+}
+.pill.bottle::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 1px 1px 0 0;
+  background: var(--c);
+}
+.pill.bottle::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 5px;
+  bottom: 0;
+  border-radius: 3px 3px 4px 4px;
+  background: var(--c);
+}
+.pill.tool {
+  width: 18px;
+  height: 12px;
+  position: relative;
+}
+.pill.tool::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 18px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--c);
+}
+.pill.tool::after {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 0;
+  width: 4px;
+  height: 5px;
+  border-radius: 1px 1px 0 0;
+  background: var(--c);
+}
 .pill.gone {
   opacity: 0.18;
 }
