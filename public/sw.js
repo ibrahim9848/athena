@@ -74,7 +74,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // (b) navigations -> network-first into the page cache
-  // (keyed by path + query: /workouts/progress?exercise=X is its own page)
+  // (keyed by path + query, so two URLs that differ only in the query are two pages)
   if (request.mode === 'navigate') {
     event.respondWith(pageNetworkFirst(request, url.pathname + url.search));
     return;

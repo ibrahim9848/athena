@@ -2,12 +2,13 @@
 
 ## What it is
 
-Athena is a small self-hosted supplements + gym tracker, installable as a PWA. It replaces two static HTML pages (a weekly supplement plan and a Thu–Sat lifting plan) with a server-backed app:
+Athena is a small self-hosted routine tracker — supplements, a scalp-and-face care routine and a gym schedule — installable as a PWA. It replaces two static HTML pages (a weekly supplement plan and a Thu–Sat lifting plan) with a server-backed app:
 
 - a daily supplement plan with a seven-day pill box, tick-offs, gym-day doses and a Friday two-meal variant, all data-driven and editable;
-- a lifting program with day sheets and exercise cues, plus a workout log (weights and reps per set, rest timer, progress charts);
+- a care routine (scalp and face) on the same engine: morning and evening steps, weekday rules, an every-other-Saturday rotation and start dates for steps that phase in, ticked off the same way;
+- a lifting program with day sheets, exercise cues and animated figures — a schedule to follow, not a log;
 - a handful of users (owner + trusted friends), each seeing only their own data;
-- push reminders for meal slots and training days.
+- push reminders for meal and routine slots and for training days.
 
 Everything lives in one SQLite file. The app is reached only over a private Tailscale network — there is no public exposure, no email, no OAuth.
 
@@ -25,21 +26,25 @@ Built end-to-end with [Claude Code](https://claude.com/claude-code) from a writt
 
 ```bash
 npm install
-npm run dev
+npm run dev:local
 ```
 
-The app runs at http://localhost:3000. The database is created at `./data/app.db` on first use (override with the `DATABASE_PATH` env var).
+The app runs at http://localhost:3000 against `./data/dev.db`. (`npm run dev` uses `./data/app.db`, or whatever `DATABASE_PATH` says.)
 
-> **Don't point a host process at the Docker database.** While the container is running, `./data/app.db` belongs to it: a server or script started on Windows against the same file refuses to start (two hosts writing one SQLite file corrupts it). For local development use a separate file, e.g. `DATABASE_PATH=./data/dev.db npm run dev`, and run admin scripts against the live data with `docker compose exec athena node scripts/...`.
+> **Don't point a host process at the Docker database.** While the container is running, `./data/app.db` belongs to it: a server or script started on Windows against the same file refuses to start (two hosts writing one SQLite file corrupts it). That is why `dev:local` exists; for scripts use `DATABASE_PATH=./data/dev.db node scripts/...`, and run admin scripts against the live data with `docker compose exec athena node scripts/...`.
 
 Create a user and load the default plans:
 
 ```bash
-npm run create-user -- --username ibrahim --role owner
-npm run seed -- --user ibrahim
+DATABASE_PATH=./data/dev.db npm run create-user -- --username ibrahim --role owner
+DATABASE_PATH=./data/dev.db npm run seed -- --user ibrahim
 ```
 
-Re-running the seed **replaces** that user's plans, logs, workouts and reminders with the defaults (reminders point at plan rows that get regenerated, so they are removed too — re-create them under Settings → Reminders).
+`seed` takes `--plan supplements|care|all` (default `all`). `all` **replaces** that user's supplements, care routine, lifting program, logs and reminders with the defaults (reminders point at plan rows that get regenerated, so they are removed too — re-create them under Settings → Reminders). A single plan replaces only that plan's slots, items, rules, notes, ticks and slot reminders and leaves everything else alone — this is how the care routine is added to an install that already has supplement history:
+
+```bash
+npm run seed -- --user ibrahim --plan care
+```
 
 ## First user
 
@@ -83,6 +88,18 @@ The owner gets `/admin` to create more users, reset passwords and delete users.
    docker compose exec athena node scripts/create-user.mjs --username ibrahim --role owner
    docker compose exec athena node scripts/seed.mjs --user ibrahim
    ```
+
+### Adding the care routine to a running install
+
+The schema migrates itself on start, so the order is: back up, rebuild, seed only the care plan, check.
+
+```bash
+docker compose exec athena node scripts/backup.mjs
+docker compose build && docker compose up -d
+docker compose exec athena node scripts/seed.mjs --user ibrahim --plan care
+```
+
+Then open the app: the pills page is unchanged, `/care` shows today's steps, the bottom bar has five tabs, and the old workout-log routes are gone.
 
 ## Expose with Tailscale
 
@@ -144,3 +161,5 @@ One commit per milestone (see `git log`); each milestone's files landed in its o
 - `M3: workouts — program overview and day sheets, workout logging with pre-fill and rest timer, history, Epley progress charts, program editor`
 - `M4: PWA + reminders — manifest and icons, service worker with offline outbox, web push, per-slot and per-training-day reminders with idempotent sends`
 - `M5: polish — admin page, daily 03:00 in-app backups + backup CLI, seed fixture matching the reference pages, README`
+
+Later, on the `care-plan` branch: the supplements engine runs more than one plan (`plan` column, rule start dates, explicit day badges, per-plan notes), the care routine arrives on it with its own `/care` pages and tab, the seed gains `--plan`, and workout logging (live log, rest timer, history, progress) is removed so the Train tab is a schedule only.
